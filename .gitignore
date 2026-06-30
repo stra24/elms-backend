@@ -42,5 +42,5 @@ out/
 # 起動時に自動生成されるためgit管理対象外
 uploads/
 
-### Mac用ファイル ###
+# Mac用ファイル
 .DS_Store
