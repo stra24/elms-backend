@@ -1,0 +1,137 @@
+@startuml sequence-news
+title 【シーケンス図】お知らせ
+
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #333333
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor White
+}
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #999999
+
+actor Client
+participant "NewsController" as Controller
+participant "NewsApplicationService" as AppService
+participant "NewsRepository" as Repo
+database "DB" as DB
+
+note over Client
+  全APIはJWT認証済みであることが前提（JwtFilterは省略）
+end note
+
+' ============================================================
+' お知らせ一覧取得
+' ============================================================
+== お知らせ一覧取得 (GET /api/news) ==
+
+Client -> Controller : GET /api/news\n?pageNum=1&pageSize=10&...（検索条件）
+
+Controller -> AppService : findNews(NewsSearchCommand)
+
+AppService -> Repo : findNews(newsSearchCondition)
+Repo -> DB : SELECT * FROM news ORDER BY createdAt DESC LIMIT ? OFFSET ?
+DB --> Repo : List<News>
+Repo --> AppService : List<News>
+
+AppService -> Repo : countNews(newsSearchCondition)
+Repo -> DB : SELECT COUNT(*)
+DB --> Repo : totalSize (int)
+Repo --> AppService : int
+
+AppService --> Controller : NewsPageDto
+Controller --> Client : 200 OK { news[], totalSize, pageNum, pageSize }
+
+' ============================================================
+' お知らせ詳細取得
+' ============================================================
+== お知らせ詳細取得 (GET /api/news/{newsId}) ==
+
+Client -> Controller : GET /api/news/{newsId}
+
+Controller -> AppService : findNewsById(newsId)
+
+AppService -> Repo : findNewsById(newsId)
+Repo -> DB : SELECT WHERE id = ?
+DB --> Repo : Optional<News>
+
+alt お知らせが存在しない
+  AppService --> Controller : ResourceNotFoundException
+  Controller --> Client : 404 Not Found
+else お知らせが存在する
+  Repo --> AppService : News
+  AppService --> Controller : NewsDto
+  Controller --> Client : 200 OK { id, title, content, createdAt, updatedAt }
+end
+
+' ============================================================
+' お知らせ新規作成
+' ============================================================
+== お知らせ新規作成 (POST /api/news) ==
+
+Client -> Controller : POST /api/news\n{ title, content }
+
+Controller -> AppService : createNews(NewsCreateCommand)
+
+AppService -> Repo : createNews(News.create(title, content))
+Repo -> DB : INSERT INTO news
+DB --> Repo : ok
+
+AppService --> Controller : void
+Controller --> Client : 200 OK
+
+' ============================================================
+' お知らせ更新
+' ============================================================
+== お知らせ更新 (PUT /api/news/{newsId}) ==
+
+Client -> Controller : PUT /api/news/{newsId}\n{ title, content }
+
+Controller -> AppService : updateNews(NewsUpdateCommand)
+
+AppService -> Repo : findNewsById(newsId)
+Repo -> DB : SELECT WHERE id = ?
+DB --> Repo : Optional<News>
+
+alt お知らせが存在しない
+  AppService --> Controller : ResourceNotFoundException
+  Controller --> Client : 404 Not Found
+else お知らせが存在する
+  Repo --> AppService : News
+
+  AppService -> Repo : updateNews(news.update(title, content))
+  Repo -> DB : UPDATE news SET title = ?, content = ?
+  DB --> Repo : ok
+
+  AppService --> Controller : void
+  Controller --> Client : 200 OK
+end
+
+' ============================================================
+' お知らせ削除
+' ============================================================
+== お知らせ削除 (DELETE /api/news/{newsId}) ==
+
+Client -> Controller : DELETE /api/news/{newsId}
+
+Controller -> AppService : deleteNewsById(newsId)
+
+AppService -> Repo : findNewsById(newsId)
+Repo -> DB : SELECT WHERE id = ?
+DB --> Repo : Optional<News>
+
+note over AppService
+  お知らせが存在しなくてもエラーにはしない（冪等性）
+end note
+
+alt お知らせが存在する場合のみ削除
+  AppService -> Repo : deleteNewsById(newsId)
+  Repo -> DB : DELETE FROM news WHERE id = ?
+  DB --> Repo : ok
+end
+
+AppService --> Controller : void
+Controller --> Client : 204 No Content
+
+@enduml

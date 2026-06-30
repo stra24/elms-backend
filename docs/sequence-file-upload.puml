@@ -1,0 +1,49 @@
+@startuml sequence-file-upload
+title 【シーケンス図】ファイルアップロード
+
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #333333
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor White
+}
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #999999
+
+actor Client
+participant "FileUploadController" as Controller
+participant "FileStorageApplicationService" as AppService
+participant "FileStorage\n(S3 / ローカル)" as Storage
+
+note over Client
+  全APIはJWT認証済みであることが前提（JwtFilterは省略）。
+  コース・ユーザーのサムネイル画像のアップロードに使用する。
+end note
+
+' ============================================================
+' ファイルアップロード
+' ============================================================
+== ファイルアップロード (POST /api/files/upload) ==
+
+Client -> Controller : POST /api/files/upload\nContent-Type: multipart/form-data\n{ file: <バイナリ> }
+
+Controller -> AppService : saveImage(MultipartFile)
+
+AppService -> Storage : ファイルを保存
+Storage --> AppService : 保存先パス（URL or 相対パス）
+
+alt アップロード成功
+  AppService --> Controller : filePath (String)
+  Controller --> Client : 200 OK\n"保存先パス"
+else アップロード失敗
+  AppService --> Controller : Exception
+  Controller --> Client : 400 Bad Request\n"ファイルアップロード失敗: {エラーメッセージ}"
+end
+
+note over Client
+  返却されたfilePathを使ってコース・ユーザーの thumbnailUrl に設定する。
+  例: コース作成APIの thumbnailUrl フィールドに指定する。
+end note
+
+@enduml

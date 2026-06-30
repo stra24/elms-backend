@@ -1,0 +1,202 @@
+@startuml sequence-user
+title 【シーケンス図】ユーザー
+
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #333333
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor White
+}
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #999999
+
+actor Client
+participant "JwtFilter" as JwtFilter
+participant "UserController" as Controller
+participant "UserApplicationService" as AppService
+participant "UserDomainService" as DomainService
+participant "UserRepository" as UserRepo
+participant "UserLoginHistoryRepository" as HistoryRepo
+database "DB" as DB
+
+note over JwtFilter
+  すべてのユーザーAPIは認証済みであることが前提。
+  JwtFilterがJWTを検証し、認証情報をSecurityContextに設定する。
+  以降の図では JwtFilter → Controller の矢印を省略する。
+end note
+
+' ============================================================
+' ユーザー一覧取得
+' ============================================================
+== ユーザー一覧取得 (GET /api/users) ==
+
+Client -> Controller : GET /api/users\n?pageNum=1&pageSize=10&...（検索条件）
+
+Controller -> AppService : findUsers(UserSearchCommand)
+
+AppService -> UserRepo : findUserIdsBySearchConditions(condition)
+UserRepo -> DB : SELECT（条件絞り込み・ページング）
+DB --> UserRepo : userIdのリスト
+UserRepo --> AppService : List<Integer>
+
+AppService -> UserRepo : findUsersByIds(userIds)
+UserRepo -> DB : SELECT WHERE id IN (...)
+DB --> UserRepo : List<User>
+UserRepo --> AppService : List<User>
+
+loop 各ユーザー
+  AppService -> HistoryRepo : findUserLoginHistoryByUserId(userId)
+  HistoryRepo -> DB : SELECT
+  DB --> HistoryRepo : Optional<UserLoginHistory>
+  HistoryRepo --> AppService : Optional<UserLoginHistory>
+
+  AppService -> DomainService : calculateProgressRate(user)
+  DomainService --> AppService : progressRate (BigDecimal)
+end
+
+AppService -> UserRepo : countUsers(condition)
+UserRepo -> DB : SELECT COUNT(*)
+DB --> UserRepo : totalSize (int)
+UserRepo --> AppService : int
+
+AppService --> Controller : UserPageDto
+Controller --> Client : 200 OK { users[], totalSize, pageNum, pageSize }
+
+' ============================================================
+' ユーザー詳細取得
+' ============================================================
+== ユーザー詳細取得 (GET /api/users/{userId}) ==
+
+Client -> Controller : GET /api/users/{userId}
+
+Controller -> AppService : findUserById(userId)
+
+AppService -> UserRepo : findUserById(userId)
+UserRepo -> DB : SELECT WHERE id = ?
+DB --> UserRepo : Optional<User>
+
+alt ユーザーが存在しない
+  AppService --> Controller : ResourceNotFoundException
+  Controller --> Client : 404 Not Found
+else ユーザーが存在する
+  UserRepo --> AppService : User
+
+  AppService -> HistoryRepo : findUserLoginHistoryByUserId(userId)
+  HistoryRepo -> DB : SELECT
+  DB --> HistoryRepo : Optional<UserLoginHistory>
+  HistoryRepo --> AppService : Optional<UserLoginHistory>
+
+  AppService -> DomainService : calculateProgressRate(user)
+  DomainService --> AppService : progressRate (BigDecimal)
+
+  AppService --> Controller : UserDto
+  Controller --> Client : 200 OK { id, emailAddress, realName, userName, userRole, progressRate, lastLoginAt, ... }
+end
+
+' ============================================================
+' ユーザー新規作成
+' ============================================================
+== ユーザー新規作成 (POST /api/users) ==
+
+Client -> Controller : POST /api/users\n{ emailAddress, password, confirmPassword, realName, userName, userRole }
+
+Controller -> AppService : createUser(UserCreateCommand)
+
+AppService -> AppService : matchesPassword(password, confirmPassword)
+
+alt パスワード不一致
+  AppService --> Controller : IllegalArgumentException
+  Controller --> Client : 400 Bad Request
+else パスワード一致
+  AppService -> UserRepo : createUser(User.create(...))
+  UserRepo -> DB : INSERT INTO users
+  DB --> UserRepo : ok
+
+  AppService --> Controller : void
+  Controller --> Client : 200 OK
+end
+
+' ============================================================
+' ユーザー更新
+' ============================================================
+== ユーザー更新 (PUT /api/users/{userId}) ==
+
+Client -> Controller : PUT /api/users/{userId}\n{ emailAddress, realName, userName, userRole, ... }
+
+Controller -> AppService : updateUser(UserUpdateCommand)
+
+AppService -> UserRepo : findUserById(userId)
+UserRepo -> DB : SELECT
+DB --> UserRepo : Optional<User>
+
+alt ユーザーが存在しない
+  AppService --> Controller : ResourceNotFoundException
+  Controller --> Client : 404 Not Found
+else ユーザーが存在する
+  UserRepo --> AppService : User
+
+  AppService -> UserRepo : updateUser(user.update(...))
+  UserRepo -> DB : UPDATE users SET ...
+  DB --> UserRepo : ok
+
+  AppService --> Controller : void
+  Controller --> Client : 200 OK
+end
+
+' ============================================================
+' ユーザー削除
+' ============================================================
+== ユーザー削除 (DELETE /api/users/{userId}) ==
+
+Client -> Controller : DELETE /api/users/{userId}
+
+Controller -> AppService : deleteUserById(userId)
+
+AppService -> UserRepo : findUserById(userId)
+UserRepo -> DB : SELECT
+DB --> UserRepo : Optional<User>
+
+note over AppService
+  ユーザーが存在しなくてもエラーにはしない（冪等性）
+end note
+
+alt ユーザーが存在する場合のみ削除
+  AppService -> UserRepo : deleteUserById(userId)
+  UserRepo -> DB : DELETE FROM users WHERE id = ?
+  DB --> UserRepo : ok
+end
+
+AppService --> Controller : void
+Controller --> Client : 204 No Content
+
+' ============================================================
+' CSVエクスポート
+' ============================================================
+== ユーザー一覧CSVエクスポート (GET /api/users/export) ==
+
+Client -> Controller : GET /api/users/export
+
+Controller -> AppService : exportUsersCsv()
+
+AppService -> UserRepo : findAllByOrderByIdAsc()
+UserRepo -> DB : SELECT * FROM users ORDER BY id ASC
+DB --> UserRepo : List<User>
+UserRepo --> AppService : List<User>
+
+loop 各ユーザー
+  AppService -> HistoryRepo : findUserLoginHistoryByUserId(userId)
+  HistoryRepo -> DB : SELECT
+  DB --> HistoryRepo : Optional<UserLoginHistory>
+  HistoryRepo --> AppService : Optional<UserLoginHistory>
+
+  AppService -> DomainService : calculateProgressRate(user)
+  DomainService --> AppService : progressRate
+end
+
+AppService -> AppService : CSVバイト列生成\n（BOM付きUTF-8・カンマ・ダブルクォートエスケープ）
+
+AppService --> Controller : ByteArrayResource (CSVバイト列)
+Controller --> Client : 200 OK\nContent-Type: text/csv\nContent-Disposition: attachment; filename=users.csv
+
+@enduml

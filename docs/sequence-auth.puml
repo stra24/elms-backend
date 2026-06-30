@@ -1,0 +1,108 @@
+@startuml sequence-auth
+title 【シーケンス図】認証
+
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #333333
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor White
+}
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #999999
+
+actor Client
+
+' ============================================================
+' ログイン
+' ============================================================
+== ログイン (POST /api/login) ==
+
+Client -> AuthController : POST /api/login\n{emailAddress, password}
+
+note over AuthController
+  JWTフィルターは /api/login には適用されない
+  （Spring Securityの認証パスとして除外）
+end note
+
+AuthController -> AuthenticationManager : authenticate(\n  UsernamePasswordAuthenticationToken\n)
+
+AuthenticationManager -> CustomUserDetailsService : loadUserByUsername(email)
+CustomUserDetailsService -> UserRepository : findUserByEmailAddress(email)
+UserRepository --> CustomUserDetailsService : User
+CustomUserDetailsService --> AuthenticationManager : UserDetails
+
+note over AuthenticationManager
+  パスワード照合（BCrypt）
+end note
+
+AuthenticationManager --> AuthController : Authentication（成功）
+
+AuthController -> UserApplicationService : updateUserLoginHistory(command)
+  UserApplicationService -> UserRepository : findUserByEmailAddress(email)
+  UserRepository --> UserApplicationService : User
+  UserApplicationService -> UserLoginHistoryRepository : findUserLoginHistoryByUserId(userId)
+  UserLoginHistoryRepository --> UserApplicationService : Optional<UserLoginHistory>
+
+  alt 初回ログイン（レコードなし）
+    UserApplicationService -> UserLoginHistoryRepository : save(UserLoginHistory.create(userId))
+  else 2回目以降（レコードあり）
+    UserApplicationService -> UserLoginHistoryRepository : save(history.update())
+  end
+
+AuthController -> JwtUtil : generateJwtToken(email)
+JwtUtil --> AuthController : jwtToken
+AuthController -> JwtUtil : generateRefreshToken(email)
+JwtUtil --> AuthController : refreshToken
+
+AuthController -> Client : 200 OK\nSet-Cookie: jwt=...; refreshToken=...
+
+' ============================================================
+' ログアウト
+' ============================================================
+== ログアウト (POST /api/logout) ==
+
+Client -> AuthController : POST /api/logout\n(Cookie: jwt, refreshToken)
+
+AuthController -> JwtUtil : clearJwtAndRefreshToken(response)
+note right: Cookieの有効期限を0にして削除
+
+AuthController --> Client : 200 OK\nSet-Cookie: jwt=（削除）; refreshToken=（削除）
+
+' ============================================================
+' トークンリフレッシュ
+' ============================================================
+== トークンリフレッシュ (GET /api/auth/refresh) ==
+
+note over Client
+  JWTの有効期限切れ時に呼び出す。
+  リフレッシュトークンが有効であれば新しいJWT・リフレッシュトークンを取得できる。
+end note
+
+Client -> JwtFilter : GET /api/auth/refresh\n(Cookie: jwt=期限切れ, refreshToken=有効)
+
+JwtFilter -> JwtUtil : getJwtFromRequestHeader(request)
+JwtUtil --> JwtFilter : jwt（期限切れ）
+
+JwtFilter -> JwtUtil : isTokenExpired(jwt) → true
+
+JwtFilter -> JwtUtil : getRefreshTokenFromCookie(request)
+JwtUtil --> JwtFilter : refreshToken
+
+JwtFilter -> JwtUtil : isTokenFormatValid(refreshToken) → true
+JwtFilter -> JwtUtil : isTokenExpired(refreshToken) → false
+
+JwtFilter -> CustomUserDetailsService : loadUserById(userId)
+CustomUserDetailsService --> JwtFilter : UserDetails
+
+JwtFilter -> JwtUtil : generateJwtToken(userId) → newJwt
+JwtFilter -> JwtUtil : generateRefreshToken(userId) → newRefreshToken
+JwtFilter -> JwtUtil : setJwtTokenToResponseCookie(response, newJwt)
+JwtFilter -> JwtUtil : setRefreshTokenToResponseCookie(response, newRefreshToken)
+JwtFilter -> JwtUtil : setTokenToSecurityContext(request, userDetails)
+
+JwtFilter -> AuthController : フィルター通過
+
+AuthController --> Client : 200 OK\nSet-Cookie: jwt=新JWT; refreshToken=新RefreshToken
+
+@enduml

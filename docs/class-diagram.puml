@@ -1,0 +1,197 @@
+@startuml class-diagram
+title e-learning-management-system ドメインクラス図
+
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor White
+  BorderColor #333333
+  ArrowColor #333333
+}
+skinparam package {
+  BorderColor #999999
+  FontStyle Bold
+}
+
+' ===== Enum =====
+enum UserRole {
+  GENERAL
+  ADMIN
+}
+
+' ===== 共有値オブジェクト =====
+class Url <<ValueObject>> {
+  - value : String
+}
+
+class Order <<ValueObject>> {
+  - value : BigDecimal
+}
+
+' ===== user パッケージ =====
+package "user" {
+  class User <<AggregateRoot>> {
+    - id : Integer
+    - emailAddress : EmailAddress
+    - password : Password
+    - realName : RealName
+    - userName : UserName
+    - thumbnailUrl : Url
+    - userRole : UserRole
+    - createdAt : LocalDateTime
+    - updatedAt : LocalDateTime
+    --
+    + {static} create(...) : User
+    + update(...) : User
+  }
+
+  class UserLoginHistory <<AggregateRoot>> {
+    - id : Integer
+    - userId : Integer
+    - createdAt : LocalDateTime
+    - updatedAt : LocalDateTime
+    --
+    + {static} create(userId) : UserLoginHistory
+    + update() : UserLoginHistory
+  }
+
+  class EmailAddress <<ValueObject>> {
+    - value : String
+  }
+
+  class Password <<ValueObject>> {
+    - value : String
+    --
+    + {static} encryptAndCreate(raw) : Password
+  }
+
+  class RealName <<ValueObject>> {
+    - value : String
+  }
+
+  class UserName <<ValueObject>> {
+    - value : String
+  }
+}
+
+' ===== course パッケージ =====
+package "course" {
+  class Course <<AggregateRoot>> {
+    - id : Integer
+    - thumbnailUrl : Url
+    - title : Title
+    - description : Description
+    - courseOrder : Order
+    - createdAt : LocalDateTime
+    - updatedAt : LocalDateTime
+    --
+    + {static} create(...) : Course
+    + update(...) : Course
+  }
+
+  class "Title" as CourseTitle <<ValueObject>> {
+    - value : String
+  }
+
+  class Description <<ValueObject>> {
+    - value : String
+  }
+}
+
+' ===== lesson パッケージ =====
+package "lesson" {
+  class LessonGroup <<AggregateRoot>> {
+    - id : Integer
+    - courseId : Integer
+    - lessonGroupOrder : Order
+    - title : Title
+    - createdAt : LocalDateTime
+    - updatedAt : LocalDateTime
+    --
+    + {static} create(...) : LessonGroup
+    + update(title) : LessonGroup
+  }
+
+  class Lesson <<AggregateRoot>> {
+    - id : Integer
+    - lessonGroupId : Integer
+    - courseId : Integer
+    - lessonOrder : Order
+    - title : Title
+    - content : Content
+    - videoUrl : Url
+    - createdAt : LocalDateTime
+    - updatedAt : LocalDateTime
+    --
+    + {static} create(...) : Lesson
+    + update(...) : Lesson
+    + updateOrder(newOrder) : Lesson
+  }
+
+  class "Title" as LessonTitle <<ValueObject>> {
+    - value : String
+  }
+
+  class Content <<ValueObject>> {
+    - value : String
+  }
+}
+
+' ===== UserLesson（中間テーブル） =====
+class UserLesson <<AggregateRoot>> {
+  - id : Integer
+  - userId : Integer
+  - lessonId : Integer
+  - createdAt : LocalDateTime
+  - updatedAt : LocalDateTime
+  --
+  + {static} create(userId, lessonId) : UserLesson
+  + update() : UserLesson
+}
+
+' ===== news パッケージ =====
+package "news" {
+  class News <<AggregateRoot>> {
+    - id : Integer
+    - title : Title
+    - content : Content
+    - createdAt : LocalDateTime
+    - updatedAt : LocalDateTime
+    --
+    + {static} create(title, content) : News
+    + update(title, content) : News
+  }
+
+  class "Title" as NewsTitle <<ValueObject>> {
+    - value : String
+  }
+
+  class "Content" as NewsContent <<ValueObject>> {
+    - value : String
+  }
+}
+
+' ===== 集約ルート間の関連（外部キーIDによる参照） =====
+User "1" --> "0..1" UserLoginHistory : userId
+User "1" --> "0..*" UserLesson : userId
+Course "1" --> "1..*" LessonGroup : courseId
+LessonGroup "1" --> "0..*" Lesson : lessonGroupId
+Lesson "1" --> "0..*" UserLesson : lessonId
+
+' ===== 値オブジェクトの構成（各集約内） =====
+User *-- EmailAddress
+User *-- Password
+User *-- RealName
+User *-- UserName
+User *-- UserRole
+
+Course *-- CourseTitle
+Course *-- Description
+
+LessonGroup *-- LessonTitle
+Lesson *-- LessonTitle
+Lesson *-- Content
+
+News *-- NewsTitle
+News *-- NewsContent
+
+@enduml

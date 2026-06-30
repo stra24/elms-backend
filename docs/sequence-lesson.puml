@@ -1,0 +1,294 @@
+@startuml sequence-lesson
+title 【シーケンス図】レッスン・レッスングループ
+
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #333333
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor White
+}
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #999999
+
+actor Client
+participant "LessonGroupController" as LGController
+participant "LessonController" as LController
+participant "LessonGroupApplicationService" as LGAppService
+participant "LessonApplicationService" as LAppService
+participant "LessonGroupDomainService" as LGDomainService
+participant "LessonDomainService" as LDomainService
+participant "LessonGroupRepository" as LGRepo
+participant "LessonRepository" as LRepo
+database "DB" as DB
+
+note over Client
+  全APIはJWT認証済みであることが前提（JwtFilterは省略）
+end note
+
+' ============================================================
+' レッスングループ新規作成
+' ============================================================
+== レッスングループ新規作成 (POST /api/courses/{courseId}/lesson-groups) ==
+
+Client -> LGController : POST /api/courses/{courseId}/lesson-groups\n{ title }
+
+LGController -> LGAppService : createLessonGroup(LessonGroupCreateCommand)
+
+LGAppService -> LGDomainService : issueLessonGroupOrder(courseId)
+LGDomainService -> LGRepo : 当該コースの最大lessonGroupOrderを取得
+LGRepo -> DB : SELECT MAX(lessonGroupOrder) WHERE courseId = ?
+DB --> LGRepo : maxOrder
+LGRepo --> LGDomainService : maxOrder
+LGDomainService --> LGAppService : 新しいOrder（maxOrder + 1）
+
+LGAppService -> LGRepo : createLessonGroup(LessonGroup.create(..., order))
+LGRepo -> DB : INSERT INTO lesson_groups
+DB --> LGRepo : 作成されたLessonGroup
+LGRepo --> LGAppService : LessonGroup
+
+LGAppService --> LGController : LessonGroupDto
+LGController --> Client : 200 OK { id, courseId, title, lessonGroupOrder, ... }
+
+' ============================================================
+' レッスングループ更新
+' ============================================================
+== レッスングループ更新 (PUT /api/courses/{courseId}/lesson-groups/{lessonGroupId}) ==
+
+Client -> LGController : PUT /api/courses/{courseId}/lesson-groups/{lessonGroupId}\n{ title }
+
+LGController -> LGAppService : updateLessonGroup(LessonGroupUpdateCommand)
+
+LGAppService -> LGRepo : findLessonGroupById(lessonGroupId)
+LGRepo -> DB : SELECT WHERE id = ?
+DB --> LGRepo : Optional<LessonGroup>
+
+alt レッスングループが存在しない
+  LGAppService --> LGController : ResourceNotFoundException
+  LGController --> Client : 404 Not Found
+else レッスングループが存在する
+  LGRepo --> LGAppService : LessonGroup
+
+  LGAppService -> LGRepo : updateLessonGroup(lessonGroup.update(title))
+  LGRepo -> DB : UPDATE lesson_groups SET title = ?
+  DB --> LGRepo : 更新されたLessonGroup
+  LGRepo --> LGAppService : LessonGroup
+
+  LGAppService -> LRepo : findLessonsByLessonGroupId(lessonGroupId)
+  LRepo -> DB : SELECT * FROM lessons WHERE lessonGroupId = ?
+  DB --> LRepo : List<Lesson>
+  LRepo --> LGAppService : List<Lesson>
+
+  LGAppService --> LGController : LessonGroupDto（lessonDtos含む）
+  LGController --> Client : 200 OK { id, title, lessons[], ... }
+end
+
+' ============================================================
+' レッスングループ削除
+' ============================================================
+== レッスングループ削除 (DELETE /api/courses/{courseId}/lesson-groups/{lessonGroupId}) ==
+
+Client -> LGController : DELETE /api/courses/{courseId}/lesson-groups/{lessonGroupId}
+
+LGController -> LGAppService : deleteLessonGroupById(lessonGroupId)
+
+LGAppService -> LGRepo : findLessonGroupById(lessonGroupId)
+LGRepo -> DB : SELECT WHERE id = ?
+DB --> LGRepo : Optional<LessonGroup>
+
+note over LGAppService
+  レッスングループが存在しなくてもエラーにはしない（冪等性）
+end note
+
+alt レッスングループが存在する場合のみ削除
+  LGAppService -> LGRepo : deleteLessonGroupById(lessonGroupId)
+  LGRepo -> DB : DELETE FROM lesson_groups WHERE id = ?
+  DB --> LGRepo : ok
+end
+
+LGAppService --> LGController : void
+LGController --> Client : 204 No Content
+
+' ============================================================
+' コース内レッスン一覧取得（グループ別）
+' ============================================================
+== コース内レッスン一覧取得 (GET /api/courses/{courseId}/lessons) ==
+
+Client -> LController : GET /api/courses/{courseId}/lessons
+
+LController -> LAppService : findLessonsGroupedByLessonGroup(courseId)
+
+LAppService -> LRepo : findLessonsGroupedByLessonGroup(courseId)
+LRepo -> DB : SELECT lesson_groups JOIN lessons\nWHERE courseId = ?\nORDER BY lessonGroupOrder, lessonOrder
+DB --> LRepo : LessonGroupWithLesson[]（JOINした行）
+LRepo --> LAppService : CourseLessonsDto
+
+LAppService --> LController : CourseLessonsDto
+LController --> Client : 200 OK { lessonGroups: [{ id, name, lessons: [...] }] }
+
+' ============================================================
+' コース内先頭レッスン取得
+' ============================================================
+== コース内先頭レッスン取得 (GET /api/courses/{courseId}/lessons/first) ==
+
+Client -> LController : GET /api/courses/{courseId}/lessons/first
+
+LController -> LAppService : findFirstLessonIdByCourseId(courseId)
+
+LAppService -> LRepo : findFirstLessonByCourseId(courseId)
+LRepo -> DB : SELECT TOP 1 FROM lessons\nJOIN lesson_groups ON ...\nWHERE courseId = ?\nORDER BY lessonGroupOrder, lessonOrder
+DB --> LRepo : Optional<Lesson>
+
+alt レッスンが存在しない
+  LAppService --> LController : FirstLessonDto.none()
+  LController --> Client : 200 OK { lessonId: null }
+else レッスンが存在する
+  LRepo --> LAppService : Lesson
+  LAppService --> LController : FirstLessonDto
+  LController --> Client : 200 OK { lessonId: 1, lessonGroupId: 1 }
+end
+
+' ============================================================
+' レッスン詳細取得（管理者向け）
+' ============================================================
+== レッスン詳細取得 (GET /api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}) ==
+
+Client -> LController : GET /api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}
+
+LController -> LAppService : findLessonById(courseId, lessonGroupId, lessonId)
+
+LAppService -> LRepo : findById(lessonId)
+LRepo -> DB : SELECT WHERE id = ?
+DB --> LRepo : Optional<Lesson>
+
+alt レッスンが存在しない
+  LAppService --> LController : ResourceNotFoundException
+  LController --> Client : 404 Not Found
+else レッスンが存在する
+  LRepo --> LAppService : Lesson
+  LAppService -> LAppService : courseId・lessonGroupIdが一致するか検証
+  alt 不一致
+    LAppService --> LController : ResourceNotFoundException
+    LController --> Client : 404 Not Found
+  else 一致
+    LAppService --> LController : LessonDto
+    LController --> Client : 200 OK { id, title, content, videoUrl, lessonOrder, ... }
+  end
+end
+
+' ============================================================
+' レッスン新規作成
+' ============================================================
+== レッスン新規作成 (POST /api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons) ==
+
+Client -> LController : POST /api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons\n{ title, content, videoUrl }
+
+LController -> LAppService : createLesson(LessonCreateCommand)
+
+LAppService -> LDomainService : issueLessonOrder(lessonGroupId)
+LDomainService -> LRepo : 当該レッスングループの最大lessonOrderを取得
+LRepo -> DB : SELECT MAX(lessonOrder) WHERE lessonGroupId = ?
+DB --> LRepo : maxOrder
+LRepo --> LDomainService : maxOrder
+LDomainService --> LAppService : 新しいOrder（maxOrder + 1）
+
+LAppService -> LRepo : createLesson(Lesson.create(..., order))
+LRepo -> DB : INSERT INTO lessons
+DB --> LRepo : 作成されたLesson
+LRepo --> LAppService : Lesson
+
+LAppService --> LController : LessonDto
+LController --> Client : 200 OK { id, title, lessonOrder, ... }
+
+' ============================================================
+' レッスン更新
+' ============================================================
+== レッスン更新 (PUT /api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}) ==
+
+Client -> LController : PUT /api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}\n{ title, content, videoUrl }
+
+LController -> LAppService : updateLesson(LessonUpdateCommand)
+
+LAppService -> LRepo : findById(lessonId)
+LRepo -> DB : SELECT WHERE id = ?
+DB --> LRepo : Optional<Lesson>
+
+alt レッスンが存在しない
+  LAppService --> LController : ResourceNotFoundException
+  LController --> Client : 404 Not Found
+else レッスンが存在する
+  LRepo --> LAppService : Lesson
+
+  LAppService -> LRepo : updateLesson(lesson.update(...))
+  LRepo -> DB : UPDATE lessons SET ...
+  DB --> LRepo : 更新されたLesson
+  LRepo --> LAppService : Lesson
+
+  LAppService --> LController : LessonDto
+  LController --> Client : 200 OK { id, title, content, videoUrl, ... }
+end
+
+' ============================================================
+' レッスン削除
+' ============================================================
+== レッスン削除 (DELETE /api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}) ==
+
+Client -> LController : DELETE /api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}
+
+LController -> LAppService : deleteLessonById(lessonId)
+
+LAppService -> LRepo : findById(lessonId)
+LRepo -> DB : SELECT WHERE id = ?
+DB --> LRepo : Optional<Lesson>
+
+note over LAppService
+  レッスンが存在しなくてもエラーにはしない（冪等性）
+end note
+
+alt レッスンが存在する場合のみ削除
+  LAppService -> LRepo : deleteLessonById(lessonId)
+  LRepo -> DB : DELETE FROM lessons WHERE id = ?
+  DB --> LRepo : ok
+end
+
+LAppService --> LController : void
+LController --> Client : 204 No Content
+
+' ============================================================
+' レッスン並び順更新
+' ============================================================
+== レッスン並び順更新 (PUT .../lessons/{lessonId}/order) ==
+
+Client -> LController : PUT /api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}/order\n{ precedingLessonId, followingLessonId }
+
+note over Client
+  ドラッグ&ドロップで並び替えた際に呼び出す。
+  移動先の前後のレッスンIDを渡す。
+  前後どちらか一方がnullの場合は先頭または末尾への移動を意味する。
+end note
+
+LController -> LAppService : updateLessonOrder(LessonOrderUpdateCommand)
+
+LAppService -> LRepo : findByIdIn([targetId, precedingId, followingId])
+LRepo -> DB : SELECT WHERE id IN (...)
+DB --> LRepo : List<Lesson>
+LRepo --> LAppService : List<Lesson>
+
+LAppService -> LDomainService : calculateNewOrder(precedingOrder, followingOrder)
+note over LDomainService
+  前後のorderの中間値を計算する。
+  ・先頭移動: followingOrder / 2
+  ・末尾移動: precedingOrder + 1
+  ・中間移動: (precedingOrder + followingOrder) / 2
+end note
+LDomainService --> LAppService : newOrder (BigDecimal)
+
+LAppService -> LRepo : updateLesson(targetLesson.updateOrder(newOrder))
+LRepo -> DB : UPDATE lessons SET lessonOrder = ? WHERE id = ?
+DB --> LRepo : 更新されたLesson
+LRepo --> LAppService : Lesson
+
+LAppService --> LController : LessonDto
+LController --> Client : 200 OK { id, lessonOrder（新しい値）, ... }
+
+@enduml
