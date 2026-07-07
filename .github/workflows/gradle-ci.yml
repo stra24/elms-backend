@@ -30,9 +30,3 @@ jobs:
 
       - name: DockerのDBコンテナを起動
         run: docker compose -f docker-compose-dev.yml up -d
-
-      - name: gradlewの実行権限を付与
-        run: chmod +x ./gradlew
-
-      - name: ビルドの実行
-        run: ./gradlew assemble -x test --no-daemon
