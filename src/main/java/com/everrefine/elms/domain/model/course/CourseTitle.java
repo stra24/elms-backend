@@ -1,25 +1,21 @@
-package com.everrefine.elms.domain.model.lesson;
+package com.everrefine.elms.domain.model.course;
 
 import com.everrefine.elms.domain.exception.InvalidValueException;
-import lombok.Value;
 
-/** レッスン名の値オブジェクト。 */
-@Value
-public class Title {
+/** コース名の値オブジェクト。 */
+public record CourseTitle(String value) {
 
   // 最大文字数
   private static final int MAX_LENGTH = 255;
-  String value;
 
   /**
-   * レッスン名を作成する。
+   * コース名を作成する。
    *
-   * @param value レッスン名文字列（255文字以内）
+   * @param value コース名文字列（255文字以内）
    */
-  public Title(String value) {
+  public CourseTitle {
     if (value == null || value.length() > MAX_LENGTH) {
       throw new InvalidValueException("タイトルは" + MAX_LENGTH + "文字以内で入力してください");
     }
-    this.value = value;
   }
 }

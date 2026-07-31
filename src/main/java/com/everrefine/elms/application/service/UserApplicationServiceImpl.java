@@ -9,6 +9,7 @@ import com.everrefine.elms.application.command.UserUpdateCommand;
 import com.everrefine.elms.application.dto.UserDto;
 import com.everrefine.elms.application.dto.UserImportResponseDto;
 import com.everrefine.elms.application.dto.UserPageDto;
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.ProgressRate;
@@ -28,6 +29,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -37,7 +39,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-/** ユーザーアプリケーションサービスの実装に関するクラス。 */
+/** ユーザーアプリケーションサービスの実装。 */
 @Service
 @AllArgsConstructor
 public class UserApplicationServiceImpl implements UserApplicationService {
@@ -71,14 +73,14 @@ public class UserApplicationServiceImpl implements UserApplicationService {
 
   @Override
   @Transactional(readOnly = true)
-  public UserDto findUserById(Integer userId) {
+  public UserDto findUserById(UUID userId) {
     User user =
         userRepository
             .findUserById(userId)
             .orElseThrow(() -> new ResourceNotFoundException(User.class, String.valueOf(userId)));
     UserLoginHistory userLoginHistory =
-        userLoginHistoryRepository.findUserLoginHistoryByUserId(user.getId()).orElse(null);
-    int completedLessonCnt = userLessonRepository.countAllByUserId(user.getId());
+        userLoginHistoryRepository.findUserLoginHistoryByUserId(user.id()).orElse(null);
+    int completedLessonCnt = userLessonRepository.countAllByUserId(user.id());
     int allLessonsCnt = lessonRepository.countAllLessons();
     ProgressRate progressRate = ProgressRate.of(completedLessonCnt, allLessonsCnt);
     return UserDto.from(user, userLoginHistory, progressRate.toBigDecimal());
@@ -88,30 +90,30 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   @Transactional(readOnly = true)
   public UserPageDto findUsers(UserSearchCommand userSearchCommand) {
     var userSearchCondition = userSearchCommand.toSearchCondition();
-    List<Integer> userIds = userRepository.findUserIdsBySearchConditions(userSearchCondition);
+    List<UUID> userIds = userRepository.findUserIdsBySearchConditions(userSearchCondition);
     List<User> users = userRepository.findUsersByIds(userIds);
 
     if (users.isEmpty()) {
       int totalSize = userRepository.countUsers(userSearchCondition);
       return UserPageDto.from(
           List.of(),
-          userSearchCondition.getPagerForRequest().getPageNum(),
-          userSearchCondition.getPagerForRequest().getPageSize(),
+          userSearchCondition.pagerForRequest().pageNum(),
+          userSearchCondition.pagerForRequest().pageSize(),
           totalSize);
     }
 
     // ユーザーIDと、そのユーザーのログイン履歴のMap
-    Map<Integer, UserLoginHistory> loginHistoryMap =
+    Map<UUID, UserLoginHistory> loginHistoryMap =
         userLoginHistoryRepository.findByUserIdsAsMap(userIds);
-    Map<Integer, Integer> completedLessonCounts = userLessonRepository.countByUserIds(userIds);
+    Map<UUID, Integer> completedLessonCounts = userLessonRepository.countByUserIds(userIds);
     int allLessonsCnt = lessonRepository.countAllLessons();
 
     List<UserDto> userDtos =
         users.stream()
             .map(
                 user -> {
-                  UserLoginHistory userLoginHistory = loginHistoryMap.get(user.getId());
-                  int completedLessonCnt = completedLessonCounts.getOrDefault(user.getId(), 0);
+                  UserLoginHistory userLoginHistory = loginHistoryMap.get(user.id());
+                  int completedLessonCnt = completedLessonCounts.getOrDefault(user.id(), 0);
                   ProgressRate progressRate = ProgressRate.of(completedLessonCnt, allLessonsCnt);
                   return UserDto.from(user, userLoginHistory, progressRate.toBigDecimal());
                 })
@@ -120,8 +122,8 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     int totalSize = userRepository.countUsers(userSearchCondition);
     return UserPageDto.from(
         userDtos,
-        userSearchCondition.getPagerForRequest().getPageNum(),
-        userSearchCondition.getPagerForRequest().getPageSize(),
+        userSearchCondition.pagerForRequest().pageNum(),
+        userSearchCondition.pagerForRequest().pageSize(),
         totalSize);
   }
 
@@ -129,8 +131,8 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   @Transactional
   public void createUser(UserCreateCommand userCreateCommand) {
     if (!UserDomainService.matchesPassword(
-        userCreateCommand.getPassword(), userCreateCommand.getConfirmPassword())) {
-      throw new IllegalArgumentException("パスワードの確認が一致しません");
+        userCreateCommand.password(), userCreateCommand.confirmPassword())) {
+      throw new BadRequestException("パスワードの確認が一致しません");
     }
 
     userRepository.createUser(userCreateCommand.toUser());
@@ -141,17 +143,17 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   public void updateUser(UserUpdateCommand userUpdateCommand) {
     User user =
         userRepository
-            .findUserById(userUpdateCommand.getId())
+            .findUserById(userUpdateCommand.id())
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(
-                        User.class, String.valueOf(userUpdateCommand.getId())));
+                        User.class, String.valueOf(userUpdateCommand.id())));
     userRepository.updateUser(userUpdateCommand.toUser(user));
   }
 
   @Override
   @Transactional
-  public void deleteUserById(Integer userId) {
+  public void deleteUserById(UUID userId) {
     // ユーザーが存在しなくてもエラーにはしない。
     userRepository.findUserById(userId).ifPresent(user -> userRepository.deleteUserById(userId));
   }
@@ -161,11 +163,11 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   public void updateUserLoginHistory(LoginHistoryCreateCommand loginHistoryCreateCommand) {
     User user =
         userRepository
-            .findUserByEmailAddress(new EmailAddress(loginHistoryCreateCommand.getEmail()))
+            .findUserByEmailAddress(new EmailAddress(loginHistoryCreateCommand.email()))
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
     Optional<UserLoginHistory> userLoginHistory =
-        userLoginHistoryRepository.findUserLoginHistoryByUserId(user.getId());
+        userLoginHistoryRepository.findUserLoginHistoryByUserId(user.id());
 
     // 該当ユーザーのログイン履歴がすでにあれば更新、なければ作成
     userLoginHistory.ifPresentOrElse(
@@ -173,7 +175,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
           userLoginHistoryRepository.save(history.update());
         },
         () -> {
-          userLoginHistoryRepository.save(UserLoginHistory.create(user.getId()));
+          userLoginHistoryRepository.save(UserLoginHistory.create(user.id()));
         });
   }
 
@@ -183,7 +185,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
 
     String[] header = {"ユーザーID", "権限", "氏名", "メールアドレス", "ユーザー名", "作成日時", "最終ログイン日時", "進捗率"};
 
-    List<User> users = userRepository.findAllByOrderByIdAsc();
+    List<User> users = userRepository.findAllByOrderByCreatedAtAscIdAsc();
 
     if (users.isEmpty()) {
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -199,10 +201,10 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     }
 
     // ユーザーIDと、そのユーザーのログイン履歴のMap
-    List<Integer> userIds = users.stream().map(User::getId).toList();
-    Map<Integer, UserLoginHistory> loginHistoryMap =
+    List<UUID> userIds = users.stream().map(User::id).toList();
+    Map<UUID, UserLoginHistory> loginHistoryMap =
         userLoginHistoryRepository.findByUserIdsAsMap(userIds);
-    Map<Integer, Integer> completedLessonCounts = userLessonRepository.countByUserIds(userIds);
+    Map<UUID, Integer> completedLessonCounts = userLessonRepository.countByUserIds(userIds);
     int allLessonsCnt = lessonRepository.countAllLessons();
 
     // 最終ログイン日時と進捗率をusersに追加する
@@ -210,8 +212,8 @@ public class UserApplicationServiceImpl implements UserApplicationService {
         users.stream()
             .map(
                 user -> {
-                  UserLoginHistory userLoginHistory = loginHistoryMap.get(user.getId());
-                  int completedLessonCnt = completedLessonCounts.getOrDefault(user.getId(), 0);
+                  UserLoginHistory userLoginHistory = loginHistoryMap.get(user.id());
+                  int completedLessonCnt = completedLessonCounts.getOrDefault(user.id(), 0);
                   ProgressRate progressRate = ProgressRate.of(completedLessonCnt, allLessonsCnt);
                   return UserDto.from(user, userLoginHistory, progressRate.toBigDecimal());
                 })
@@ -233,16 +235,14 @@ public class UserApplicationServiceImpl implements UserApplicationService {
       DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
       for (UserDto userDto : userDtos) {
         String[] user = {
-          escape(String.valueOf(userDto.getId())),
-          escape(userDto.getUserRole()),
-          escape(userDto.getRealName()),
-          escape(userDto.getEmailAddress()),
-          escape(userDto.getUserName()),
-          escape(userDto.getCreatedAt().format(formatter)),
-          userDto.getLastLoginAt() == null
-              ? ""
-              : escape(userDto.getLastLoginAt().format(formatter)),
-          escape(userDto.getProgressRate().toString() + "%")
+          escape(String.valueOf(userDto.id())),
+          escape(userDto.userRole()),
+          escape(userDto.realName()),
+          escape(userDto.emailAddress()),
+          escape(userDto.userName()),
+          escape(userDto.createdAt().format(formatter)),
+          userDto.lastLoginAt() == null ? "" : escape(userDto.lastLoginAt().format(formatter)),
+          escape(userDto.progressRate().toString() + "%")
         };
         file.println(String.join(",", user));
       }
@@ -257,12 +257,12 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   public void updatePassword(PasswordUpdateCommand passwordUpdateCommand) {
     User user = userDomainService.getLoginUser();
 
-    if (!user.isCurrentPasswordMatch(passwordUpdateCommand.getCurrentPassword())) {
+    if (!user.isCurrentPasswordMatch(passwordUpdateCommand.currentPassword())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     }
 
     userRepository.updateUser(
-        passwordUpdateCommand.toUser(user, passwordUpdateCommand.getNewPassword()));
+        passwordUpdateCommand.toUser(user, passwordUpdateCommand.newPassword()));
   }
 
   /**
@@ -293,11 +293,11 @@ public class UserApplicationServiceImpl implements UserApplicationService {
    */
   private User findCurrentUser(UserImportCommand userImportCommand) {
     return userRepository
-        .findUserById(userImportCommand.getCurrentUserId())
+        .findUserById(userImportCommand.currentUserId())
         .orElseThrow(
             () ->
                 new ResourceNotFoundException(
-                    User.class, String.valueOf(userImportCommand.getCurrentUserId())));
+                    User.class, String.valueOf(userImportCommand.currentUserId())));
   }
 
   /**
@@ -308,8 +308,8 @@ public class UserApplicationServiceImpl implements UserApplicationService {
    */
   private void validateCurrentUserIncluded(UserImportCommand userImportCommand, User currentUser) {
     boolean currentUserExists =
-        userImportCommand.getRows().stream()
-            .anyMatch(row -> row.hasEmailAddress(currentUser.getEmailAddress()));
+        userImportCommand.rows().stream()
+            .anyMatch(row -> row.hasEmailAddress(currentUser.emailAddress()));
     if (!currentUserExists) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "現在ログイン中のユーザーがCSVに含まれていません");
     }

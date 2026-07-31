@@ -1,8 +1,9 @@
 package com.everrefine.elms.infrastructure.dao;
 
-import com.everrefine.elms.domain.model.news.News;
+import com.everrefine.elms.infrastructure.entity.news.NewsEntity;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Repository;
 
 /** お知らせのDAOインターフェース。 */
 @Repository
-public interface NewsDao extends CrudRepository<News, Integer> {
+public interface NewsDao extends CrudRepository<NewsEntity, UUID> {
 
   @Query(
       """
@@ -19,7 +20,7 @@ public interface NewsDao extends CrudRepository<News, Integer> {
       WHERE id IN (:ids)
       ORDER BY created_at DESC
       """)
-  List<News> findByIdIn(@Param("ids") List<Integer> ids);
+  List<NewsEntity> findByIdIn(@Param("ids") List<UUID> ids);
 
   @Query(
       """
@@ -31,7 +32,7 @@ public interface NewsDao extends CrudRepository<News, Integer> {
       ORDER BY created_at DESC
       LIMIT :pageSize OFFSET :offset
       """)
-  List<Integer> findNewsBySearchConditions(
+  List<UUID> findNewsBySearchConditions(
       @Param("newsTitle") String newsTitle,
       @Param("createdDateFrom") LocalDate createdDateFrom,
       @Param("createdDateTo") LocalDate createdDateTo,

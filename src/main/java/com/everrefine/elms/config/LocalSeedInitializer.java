@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 @Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
-/** ローカル環境のシードデータ初期化に関するクラス。 */
+/** ローカル環境のシードデータ初期化。 */
 public class LocalSeedInitializer implements ApplicationRunner {
 
   @Value("${upload.directory}")

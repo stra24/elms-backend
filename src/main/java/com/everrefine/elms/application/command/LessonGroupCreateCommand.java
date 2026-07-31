@@ -2,14 +2,10 @@ package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
 import java.math.BigDecimal;
-import lombok.Data;
+import java.util.UUID;
 
 /** レッスングループ作成用のコマンド。 */
-@Data
-public class LessonGroupCreateCommand {
-
-  private final Integer courseId;
-  private final String title;
+public record LessonGroupCreateCommand(UUID courseId, String title) {
 
   /**
    * LessonGroupエンティティに変換する。

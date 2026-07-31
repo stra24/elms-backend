@@ -13,7 +13,7 @@ import software.amazon.awssdk.services.s3.S3ClientBuilder;
 
 @Configuration
 @Profile("prd")
-/** S3設定に関するクラス。 */
+/** S3設定。 */
 public class S3Config {
 
   @Value("${cloud.aws.s3.endpoint:}")

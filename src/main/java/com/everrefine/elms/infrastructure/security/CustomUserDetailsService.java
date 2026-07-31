@@ -4,13 +4,14 @@ import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.UserRepository;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-/** Spring Security用のユーザー詳細サービスに関するクラス。 */
+/** Spring Security用のユーザー詳細サービス。 */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
@@ -33,9 +34,9 @@ public class CustomUserDetailsService implements UserDetailsService {
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
     return new org.springframework.security.core.userdetails.User(
-        user.getId().toString(),
-        user.getPassword().getValue(),
-        List.of(new SimpleGrantedAuthority(user.getUserRole().getCode())));
+        user.id().toString(),
+        user.password().value(),
+        List.of(new SimpleGrantedAuthority(user.userRole().getCode())));
   }
 
   /**
@@ -49,13 +50,13 @@ public class CustomUserDetailsService implements UserDetailsService {
     try {
       User user =
           userRepository
-              .findUserById(Integer.valueOf(userId))
+              .findUserById(UUID.fromString(userId))
               .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
       return new org.springframework.security.core.userdetails.User(
-          user.getId().toString(),
-          user.getPassword().getValue(),
-          List.of(new SimpleGrantedAuthority(user.getUserRole().getCode())));
+          user.id().toString(),
+          user.password().value(),
+          List.of(new SimpleGrantedAuthority(user.userRole().getCode())));
     } catch (UsernameNotFoundException e) {
       throw e;
     } catch (Exception e) {

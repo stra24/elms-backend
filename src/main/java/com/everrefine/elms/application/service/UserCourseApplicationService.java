@@ -2,6 +2,7 @@ package com.everrefine.elms.application.service;
 
 import com.everrefine.elms.application.dto.UserCourseDto;
 import java.util.List;
+import java.util.UUID;
 
 /** ユーザーコースアプリケーションサービスのインターフェース。 */
 public interface UserCourseApplicationService {
@@ -12,5 +13,5 @@ public interface UserCourseApplicationService {
    * @param userId ユーザーID
    * @return ユーザーコースDTOリスト
    */
-  List<UserCourseDto> findUserCourses(Integer userId);
+  List<UserCourseDto> findUserCourses(UUID userId);
 }

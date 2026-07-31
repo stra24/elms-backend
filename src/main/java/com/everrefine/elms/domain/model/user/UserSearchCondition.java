@@ -3,35 +3,17 @@ package com.everrefine.elms.domain.model.user;
 import com.everrefine.elms.domain.model.PagerForRequest;
 import jakarta.annotation.Nullable;
 import java.time.LocalDate;
-import lombok.Value;
 
 /** ユーザー検索条件の値オブジェクト。 */
-@Value
-public class UserSearchCondition {
-
-  /** リクエスト用のページャー情報 */
-  PagerForRequest pagerForRequest;
-
-  /** ユーザーID */
-  @Nullable String userId;
-
-  /** 権限 */
-  @Nullable String userRole;
-
-  /** 氏名 */
-  @Nullable String realName;
-
-  /** ユーザー名 */
-  @Nullable String userName;
-
-  /** メールアドレス */
-  @Nullable String emailAddress;
-
-  /** 作成日From */
-  @Nullable LocalDate createdDateFrom;
-
-  /** 作成日To */
-  @Nullable LocalDate createdDateTo;
+public record UserSearchCondition(
+    PagerForRequest pagerForRequest,
+    @Nullable String userId,
+    @Nullable String userRole,
+    @Nullable String realName,
+    @Nullable String userName,
+    @Nullable String emailAddress,
+    @Nullable LocalDate createdDateFrom,
+    @Nullable LocalDate createdDateTo) {
 
   /**
    * ユーザー検索条件を作成する。
@@ -56,14 +38,15 @@ public class UserSearchCondition {
       String emailAddress,
       LocalDate createdDateFrom,
       LocalDate createdDateTo) {
-    this.pagerForRequest = new PagerForRequest(pageNum, pageSize);
-    this.userId = userId;
-    this.userRole = userRole;
-    this.realName = realName;
-    this.userName = userName;
-    this.emailAddress = emailAddress;
-    this.createdDateFrom = createdDateFrom;
-    this.createdDateTo = createdDateTo;
+    this(
+        new PagerForRequest(pageNum, pageSize),
+        userId,
+        userRole,
+        realName,
+        userName,
+        emailAddress,
+        createdDateFrom,
+        createdDateTo);
   }
 
   /**
@@ -72,7 +55,7 @@ public class UserSearchCondition {
    * @return 1ページ当たりの件数
    */
   public int getPageSize() {
-    return pagerForRequest.getPageSize();
+    return pagerForRequest.pageSize();
   }
 
   /**

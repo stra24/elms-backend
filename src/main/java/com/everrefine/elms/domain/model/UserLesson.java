@@ -1,31 +1,11 @@
 package com.everrefine.elms.domain.model;
 
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
+import java.util.UUID;
 
-/** ユーザーレッスンのエンティティ。 */
-@Getter
-@AllArgsConstructor
-@Table("user_lessons")
-public class UserLesson {
-
-  @Id private final Integer id;
-
-  @Column("user_id")
-  private Integer userId;
-
-  @Column("lesson_id")
-  private Integer lessonId;
-
-  @Column("created_at")
-  private LocalDateTime createdAt;
-
-  @Column("updated_at")
-  private LocalDateTime updatedAt;
+/** ユーザーレッスンのドメインモデル。 */
+public record UserLesson(
+    UUID id, UUID userId, UUID lessonId, LocalDateTime createdAt, LocalDateTime updatedAt) {
 
   /**
    * 新規作成用のユーザーレッスンを作成する。
@@ -34,7 +14,7 @@ public class UserLesson {
    * @param lessonId レッスンID
    * @return 新規作成用のユーザーレッスン
    */
-  public static UserLesson create(Integer userId, Integer lessonId) {
+  public static UserLesson create(UUID userId, UUID lessonId) {
     LocalDateTime now = LocalDateTime.now();
     return new UserLesson(null, userId, lessonId, now, now);
   }

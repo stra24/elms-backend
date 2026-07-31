@@ -4,6 +4,7 @@ import com.everrefine.elms.application.command.UserLessonCompletionStatusUpdateC
 import com.everrefine.elms.application.dto.UserLessonDetailDto;
 import com.everrefine.elms.application.dto.UserLessonGroupDto;
 import java.util.List;
+import java.util.UUID;
 
 /** ユーザーレッスンアプリケーションサービスのインターフェース。 */
 public interface UserLessonApplicationService {
@@ -18,7 +19,7 @@ public interface UserLessonApplicationService {
    * @return ユーザーレッスン詳細DTO
    */
   UserLessonDetailDto findUserLessonDetail(
-      Integer userId, Integer courseId, Integer lessonGroupId, Integer lessonId);
+      UUID userId, UUID courseId, UUID lessonGroupId, UUID lessonId);
 
   /**
    * ユーザーレッスンの完了状態を更新する。
@@ -28,8 +29,8 @@ public interface UserLessonApplicationService {
    * @param userLessonCompletionStatusUpdateCommand ユーザーレッスン完了状態更新Command
    */
   void updateUserLesson(
-      Integer courseId,
-      Integer lessonGroupId,
+      UUID courseId,
+      UUID lessonGroupId,
       UserLessonCompletionStatusUpdateCommand userLessonCompletionStatusUpdateCommand);
 
   /**
@@ -39,5 +40,5 @@ public interface UserLessonApplicationService {
    * @param courseId コースID
    * @return ユーザーレッスングループDTOリスト
    */
-  List<UserLessonGroupDto> findUserLessons(Integer userId, Integer courseId);
+  List<UserLessonGroupDto> findUserLessons(UUID userId, UUID courseId);
 }

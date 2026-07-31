@@ -1,44 +1,22 @@
 package com.everrefine.elms.domain.model.lesson;
 
 import com.everrefine.elms.domain.model.Order;
-import com.everrefine.elms.domain.model.Url;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
+import java.util.UUID;
 import org.springframework.lang.Nullable;
 
-/** レッスンのエンティティ。 */
-@Getter
-@AllArgsConstructor
-@Table("lessons")
-public class Lesson {
-
-  @Id private final Integer id;
-
-  @Column("lesson_group_id")
-  private Integer lessonGroupId;
-
-  @Column("course_id")
-  private Integer courseId;
-
-  @Column("lesson_order")
-  private Order lessonOrder;
-
-  private Title title;
-  @Nullable private Content content;
-
-  @Nullable @Column("video_url")
-  private Url videoUrl;
-
-  @Column("created_at")
-  private LocalDateTime createdAt;
-
-  @Column("updated_at")
-  private LocalDateTime updatedAt;
+/** レッスンのドメインモデル。 */
+public record Lesson(
+    UUID id,
+    UUID lessonGroupId,
+    UUID courseId,
+    Order lessonOrder,
+    LessonTitle title,
+    @Nullable LessonContent content,
+    @Nullable VideoUrl videoUrl,
+    LocalDateTime createdAt,
+    LocalDateTime updatedAt) {
 
   /**
    * 新規作成用のレッスンを作成する。
@@ -52,8 +30,8 @@ public class Lesson {
    * @return 新規作成用のレッスン
    */
   public static Lesson create(
-      Integer lessonGroupId,
-      Integer courseId,
+      UUID lessonGroupId,
+      UUID courseId,
       BigDecimal lessonOrder,
       String title,
       String content,
@@ -63,9 +41,9 @@ public class Lesson {
         lessonGroupId,
         courseId,
         new Order(lessonOrder),
-        new Title(title),
-        content == null ? null : new Content(content),
-        videoUrl == null ? null : new Url(videoUrl),
+        new LessonTitle(title),
+        content == null ? null : new LessonContent(content),
+        videoUrl == null ? null : new VideoUrl(videoUrl),
         LocalDateTime.now(),
         LocalDateTime.now());
   }
@@ -84,9 +62,9 @@ public class Lesson {
         this.lessonGroupId,
         this.courseId,
         this.lessonOrder,
-        title == null ? this.title : new Title(title),
-        content == null ? this.content : new Content(content),
-        videoUrl == null ? this.videoUrl : new Url(videoUrl),
+        title == null ? this.title : new LessonTitle(title),
+        content == null ? this.content : new LessonContent(content),
+        videoUrl == null ? this.videoUrl : new VideoUrl(videoUrl),
         this.createdAt,
         LocalDateTime.now());
   }

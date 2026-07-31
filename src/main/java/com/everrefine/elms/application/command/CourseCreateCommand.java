@@ -2,19 +2,16 @@ package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.domain.model.course.Course;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.math.BigDecimal;
+import java.util.UUID;
 import org.springframework.lang.Nullable;
 
 /** 新規作成用コースのコマンド。 */
-@Getter
-@AllArgsConstructor
-public class CourseCreateCommand {
-
-  @Nullable private Integer id;
-  @Nullable private String thumbnailUrl;
-  @NotNull private String title;
-  @Nullable private String description;
+public record CourseCreateCommand(
+    @Nullable UUID id,
+    @Nullable String thumbnailUrl,
+    @NotNull String title,
+    @Nullable String description) {
 
   /**
    * Courseエンティティに変換する。
@@ -22,7 +19,7 @@ public class CourseCreateCommand {
    * @param courseOrder コース順序
    * @return コースエンティティ
    */
-  public Course toCourse(java.math.BigDecimal courseOrder) {
+  public Course toCourse(BigDecimal courseOrder) {
     return Course.create(thumbnailUrl, title, description, courseOrder);
   }
 }

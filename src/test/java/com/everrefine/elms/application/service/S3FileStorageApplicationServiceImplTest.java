@@ -90,7 +90,7 @@ class S3FileStorageApplicationServiceImplTest {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
         "test@example.com",
-        Password.encryptAndCreate("password").getValue(),
+        Password.encryptAndCreate("password").value(),
         "テスト ユーザー",
         "testuser",
         thumbnailUrl,

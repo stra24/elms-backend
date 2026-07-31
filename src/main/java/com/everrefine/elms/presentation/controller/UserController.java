@@ -19,7 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -85,7 +85,7 @@ public class UserController {
   })
   @PreAuthorize("hasAuthority('ADMIN') or #userId.toString() == authentication.name")
   @GetMapping("/{userId}")
-  public UserDto findUserById(@PathVariable @Positive Integer userId) {
+  public UserDto findUserById(@PathVariable UUID userId) {
     return userApplicationService.findUserById(userId);
   }
 
@@ -147,7 +147,7 @@ public class UserController {
   @PostMapping("/import")
   public ResponseEntity<UserImportResponseDto> importUsersCsv(
       @RequestParam("file") @NotNull MultipartFile file, Authentication authentication) {
-    Integer currentUserId = Integer.parseInt(authentication.getName());
+    UUID currentUserId = UUID.fromString(authentication.getName());
     UserImportCommand userImportCommand = UserImportCommand.from(file, currentUserId);
     UserImportResponseDto response = userApplicationService.importUsersCsv(userImportCommand);
     return ResponseEntity.ok(response);
@@ -170,8 +170,7 @@ public class UserController {
   @PreAuthorize("hasAuthority('ADMIN') or #userId.toString() == authentication.name")
   @PutMapping("/{userId}")
   public void updateUser(
-      @PathVariable @Positive Integer userId,
-      @RequestBody @Valid UserUpdateRequest userUpdateRequest) {
+      @PathVariable UUID userId, @RequestBody @Valid UserUpdateRequest userUpdateRequest) {
     UserUpdateCommand userUpdateCommand = userUpdateRequest.toCommand(userId);
     userApplicationService.updateUser(userUpdateCommand);
   }
@@ -211,7 +210,7 @@ public class UserController {
   @PreAuthorize("hasAuthority('ADMIN')")
   @DeleteMapping("/{userId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void deleteUserById(@PathVariable @Positive Integer userId) {
+  public void deleteUserById(@PathVariable UUID userId) {
     userApplicationService.deleteUserById(userId);
   }
 }

@@ -2,6 +2,7 @@ package com.everrefine.elms.domain.service;
 
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.UserRepository;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -10,7 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
-/** {@link UserDomainService} の実装クラス。 */
+/** {@link UserDomainService} の実装。 */
 @Component
 @RequiredArgsConstructor
 public class UserDomainServiceImpl implements UserDomainService {
@@ -29,7 +30,7 @@ public class UserDomainServiceImpl implements UserDomainService {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
     }
     UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-    Integer userId = Integer.valueOf(userDetails.getUsername());
+    UUID userId = UUID.fromString(userDetails.getUsername());
     return userRepository
         .findUserById(userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));

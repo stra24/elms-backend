@@ -1,25 +1,9 @@
 package com.everrefine.elms.application.dto;
 
 import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
-/** レッスンページDTOに関するクラス。 */
-@AllArgsConstructor
-@Getter
-public class LessonPageDto {
-
-  /** レッスンDTOリスト */
-  private final List<LessonDto> lessonDtos;
-
-  /** ページ番号 */
-  private final int pageNum;
-
-  /** 1ページ当たりの件数 */
-  private final int pageSize;
-
-  /** 総データ件数 */
-  private final int totalSize;
+/** レッスンページDTO。 */
+public record LessonPageDto(List<LessonDto> lessonDtos, int pageNum, int pageSize, int totalSize) {
 
   /**
    * LessonPageDtoを生成する。

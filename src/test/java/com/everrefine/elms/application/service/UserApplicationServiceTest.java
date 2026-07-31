@@ -22,7 +22,9 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,7 +71,7 @@ class UserApplicationServiceTest {
   }
 
   // userを作成
-  public Integer createUser(
+  public UUID createUser(
       String emailAddress,
       String password,
       String realName,
@@ -90,7 +92,7 @@ class UserApplicationServiceTest {
              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
             """,
         emailAddress,
-        encryptAndCreate(password).getValue(),
+        encryptAndCreate(password).value(),
         realName,
         userName,
         null,
@@ -98,20 +100,20 @@ class UserApplicationServiceTest {
         createdAt,
         LocalDateTime.now());
     return jdbcTemplate.queryForObject(
-        "SELECT id FROM users WHERE email_address = ?", Integer.class, emailAddress);
+        "SELECT id FROM users WHERE email_address = ?", UUID.class, emailAddress);
   }
 
   // 認証済みユーザーを作成
   public void createAuthentication(User user) {
     UserDetails userDetails =
         new org.springframework.security.core.userdetails.User(
-            user.getId().toString(), user.getPassword().getValue(), List.of());
+            user.id().toString(), user.password().value(), List.of());
     Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, List.of());
     SecurityContextHolder.getContext().setAuthentication(auth);
   }
 
   // 最終ログイン履歴を作成
-  public void createLastLoginHistory(Integer userId, LocalDateTime dateTime) {
+  public void createLastLoginHistory(UUID userId, LocalDateTime dateTime) {
     jdbcTemplate.update(
         "INSERT INTO user_login_histories (user_id, created_at, updated_at) VALUES (?, ?, ?)",
         userId,
@@ -123,16 +125,18 @@ class UserApplicationServiceTest {
   void 正常系_ユーザー情報がCSV形式で生成されること() throws IOException, CsvValidationException {
 
     // Arrange
-    LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
-    Integer userId1 =
-        createUser("test1@example.com", "password", "テスト はじめ", "test1\nuser", "GENERAL", dateTime);
-    Integer userId2 =
+    LocalDateTime dateTime1 = LocalDateTime.of(2026, 3, 21, 9, 30);
+    LocalDateTime dateTime2 = LocalDateTime.of(2026, 3, 21, 9, 31);
+    UUID userId1 =
+        createUser("test1@example.com", "password", "テスト はじめ", "test1\nuser", "GENERAL", dateTime1);
+    UUID userId2 =
         createUser(
-            "test2@example.com", "password", "テスト\"\" 次郎", "test2,user", "GENERAL", dateTime);
-    createLastLoginHistory(userId1, dateTime);
-    createLastLoginHistory(userId2, dateTime);
+            "test2@example.com", "password", "テスト\"\" 次郎", "test2,user", "GENERAL", dateTime2);
+    createLastLoginHistory(userId1, dateTime1);
+    createLastLoginHistory(userId2, dateTime2);
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-    String dateTimeFormat = dateTime.format(formatter);
+    String dateTimeFormat1 = dateTime1.format(formatter);
+    String dateTimeFormat2 = dateTime2.format(formatter);
     // Act
     Resource usersCsv = userApplicationService.exportUsersCsv();
 
@@ -156,8 +160,8 @@ class UserApplicationServiceTest {
           "テスト はじめ",
           "test1@example.com",
           "test1\nuser",
-          dateTimeFormat,
-          dateTimeFormat,
+          dateTimeFormat1,
+          dateTimeFormat1,
           "0.0%"
         },
         row1);
@@ -169,8 +173,8 @@ class UserApplicationServiceTest {
           "テスト\"\" 次郎",
           "test2@example.com",
           "test2,user",
-          dateTimeFormat,
-          dateTimeFormat,
+          dateTimeFormat2,
+          dateTimeFormat2,
           "0.0%"
         },
         row2);
@@ -180,14 +184,12 @@ class UserApplicationServiceTest {
   void 正常系_パスワードと更新日時が更新されること() {
     // Arrange
     LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
-    Integer userId =
+    UUID userId =
         createUser("test@example.com", "currentPass", "テスト はじめ", "tester", "GENERAL", dateTime);
     User user = userRepository.findUserById(userId).orElseThrow();
     createAuthentication(user);
 
-    PasswordUpdateRequest request = new PasswordUpdateRequest();
-    request.setCurrentPassword("currentPass");
-    request.setNewPassword("newPass");
+    PasswordUpdateRequest request = new PasswordUpdateRequest("currentPass", "newPass");
     PasswordUpdateCommand passwordUpdateCommand = request.toCommand();
     PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     // Act
@@ -195,21 +197,19 @@ class UserApplicationServiceTest {
     User updatedUser = userRepository.findUserById(userId).orElseThrow();
 
     // Assert
-    assertTrue(passwordEncoder.matches("newPass", updatedUser.getPassword().getValue()));
-    assertNotEquals(updatedUser.getUpdatedAt(), dateTime);
-    assertEquals("tester", updatedUser.getUserName().getValue());
+    assertTrue(passwordEncoder.matches("newPass", updatedUser.password().value()));
+    assertNotEquals(updatedUser.updatedAt(), dateTime);
+    assertEquals("tester", updatedUser.userName().value());
   }
 
   @Test
   void 異常系_認証情報がないとき401が返ってくること() {
     // Arrange
     LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
-    Integer userId =
+    UUID userId =
         createUser("test@example.com", "currentPass", "テスト はじめ", "tester", "GENERAL", dateTime);
     User user = userRepository.findUserById(userId).orElseThrow();
-    PasswordUpdateRequest request = new PasswordUpdateRequest();
-    request.setCurrentPassword("currentPass");
-    request.setNewPassword("newPass");
+    PasswordUpdateRequest request = new PasswordUpdateRequest("currentPass", "newPass");
     PasswordUpdateCommand passwordUpdateCommand = request.toCommand();
     // Act & Assert
     ResponseStatusException ex =
@@ -219,13 +219,11 @@ class UserApplicationServiceTest {
     assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
   }
 
-  @WithMockUser(username = "9999")
+  @WithMockUser(username = "00000000-0000-0000-0000-000000000000")
   @Test
   void ユーザーが存在しないとき404が返ってくること() {
     // Arrange
-    PasswordUpdateRequest request = new PasswordUpdateRequest();
-    request.setCurrentPassword("currentPass");
-    request.setNewPassword("newPass");
+    PasswordUpdateRequest request = new PasswordUpdateRequest("currentPass", "newPass");
     PasswordUpdateCommand passwordUpdateCommand = request.toCommand();
 
     // Act & Assert
@@ -240,14 +238,12 @@ class UserApplicationServiceTest {
   void 異常系_パスワードが一致しないとき400が返ってくること() {
     // Arrange
     LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
-    Integer userId =
+    UUID userId =
         createUser("test@example.com", "currentPass", "テスト はじめ", "tester", "GENERAL", dateTime);
     User user = userRepository.findUserById(userId).orElseThrow();
     createAuthentication(user);
 
-    PasswordUpdateRequest request = new PasswordUpdateRequest();
-    request.setCurrentPassword("wrongPass");
-    request.setNewPassword("newPass");
+    PasswordUpdateRequest request = new PasswordUpdateRequest("wrongPass", "newPass");
     PasswordUpdateCommand passwordUpdateCommand = request.toCommand();
 
     // Act & Assert
@@ -262,9 +258,9 @@ class UserApplicationServiceTest {
   void 正常系_CSVファイルをアップロードしてユーザー情報が洗い替えされること() throws IOException {
     // Arrange
     LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
-    Integer userId1 =
+    UUID userId1 =
         createUser("test1@example.com", "password1", "テスト 一郎", "test1", "GENERAL", dateTime);
-    Integer userId2 =
+    UUID userId2 =
         createUser("test2@example.com", "password2", "テスト 二郎", "test2", "ADMIN", dateTime);
 
     String csvContent =
@@ -285,32 +281,35 @@ class UserApplicationServiceTest {
     UserImportResponseDto response = userApplicationService.importUsersCsv(command);
 
     // Assert
-    assertEquals(2, response.getImportedCount());
+    assertEquals(2, response.importedCount());
 
-    List<User> users = userRepository.findAllByOrderByIdAsc();
+    List<User> users =
+        userRepository.findAllByOrderByCreatedAtAscIdAsc().stream()
+            .sorted(Comparator.comparing(user -> user.emailAddress().value()))
+            .toList();
     assertEquals(2, users.size());
-    assertEquals(userId1, users.get(0).getId());
+    assertEquals(userId1, users.get(0).id());
     assertTrue(userRepository.findUserById(userId1).isPresent());
-    assertEquals("test1@example.com", users.get(0).getEmailAddress().getValue());
-    assertEquals("更新 一郎", users.get(0).getRealName().getValue());
-    assertEquals("updated1", users.get(0).getUserName().getValue());
-    assertEquals("updated2@example.com", users.get(1).getEmailAddress().getValue());
-    assertEquals("更新 二郎", users.get(1).getRealName().getValue());
-    assertEquals("updated2", users.get(1).getUserName().getValue());
+    assertEquals("test1@example.com", users.get(0).emailAddress().value());
+    assertEquals("更新 一郎", users.get(0).realName().value());
+    assertEquals("updated1", users.get(0).userName().value());
+    assertEquals("updated2@example.com", users.get(1).emailAddress().value());
+    assertEquals("更新 二郎", users.get(1).realName().value());
+    assertEquals("updated2", users.get(1).userName().value());
 
     // パスワードがランダム生成され、既存パスワードが引き継がれていないことを確認
     PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    assertNotNull(users.get(0).getPassword().getValue());
-    assertNotNull(users.get(1).getPassword().getValue());
-    assertNotEquals(users.get(0).getPassword().getValue(), users.get(1).getPassword().getValue());
-    assertTrue(!passwordEncoder.matches("password1", users.get(0).getPassword().getValue()));
-    assertTrue(!passwordEncoder.matches("password2", users.get(1).getPassword().getValue()));
+    assertNotNull(users.get(0).password().value());
+    assertNotNull(users.get(1).password().value());
+    assertNotEquals(users.get(0).password().value(), users.get(1).password().value());
+    assertTrue(!passwordEncoder.matches("password1", users.get(0).password().value()));
+    assertTrue(!passwordEncoder.matches("password2", users.get(1).password().value()));
   }
 
   @Test
   void 異常系_ファイル未指定の場合にエラーになること() {
     // Arrange
-    Integer currentUserId = 1;
+    UUID currentUserId = UUID.randomUUID();
 
     // Act & Assert
     ResponseStatusException ex =
@@ -324,7 +323,7 @@ class UserApplicationServiceTest {
   void 異常系_現在ログイン中ユーザーがCSVに含まれていない場合にエラーになること() throws IOException {
     // Arrange
     LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
-    Integer userId1 =
+    UUID userId1 =
         createUser("test1@example.com", "password1", "テスト 一郎", "test1", "GENERAL", dateTime);
 
     String csvContent =
@@ -350,7 +349,7 @@ class UserApplicationServiceTest {
   void 異常系_ADMINユーザーがCSVに含まれていない場合にエラーになること() throws IOException {
     // Arrange
     LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
-    Integer userId =
+    UUID userId =
         createUser("test@example.com", "password", "テスト 一郎", "test1", "GENERAL", dateTime);
 
     String csvContent = "\uFEFF" + "権限,氏名,メールアドレス,ユーザー名\n" + "一般,テスト 一郎,test@example.com,test1\n";
@@ -374,7 +373,7 @@ class UserApplicationServiceTest {
   @Test
   void 異常系_CSVヘッダが不正な場合にエラーになること() throws IOException {
     // Arrange
-    Integer currentUserId = 1;
+    UUID currentUserId = UUID.randomUUID();
 
     String csvContent =
         "\uFEFF" + "不正なヘッダ,氏名,メールアドレス,ユーザー名\n" + "一般,テスト 一郎,test@example.com,test1\n";
@@ -399,7 +398,7 @@ class UserApplicationServiceTest {
   @Test
   void 異常系_CSVファイル形式が不正な場合にエラーになること() throws IOException {
     // Arrange
-    Integer currentUserId = 1;
+    UUID currentUserId = UUID.randomUUID();
 
     String csvContent = "test content";
     MultipartFile file =

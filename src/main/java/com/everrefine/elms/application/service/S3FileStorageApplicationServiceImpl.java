@@ -24,7 +24,7 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
-/** S3ファイルストレージアプリケーションサービスの実装に関するクラス。 */
+/** S3ファイルストレージアプリケーションサービスの実装。 */
 @Service
 @Profile("prd")
 @Slf4j

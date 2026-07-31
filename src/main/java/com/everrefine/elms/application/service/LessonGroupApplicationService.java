@@ -3,6 +3,7 @@ package com.everrefine.elms.application.service;
 import com.everrefine.elms.application.command.LessonGroupCreateCommand;
 import com.everrefine.elms.application.command.LessonGroupUpdateCommand;
 import com.everrefine.elms.application.dto.LessonGroupDto;
+import java.util.UUID;
 
 /** レッスングループアプリケーションサービスのインターフェース。 */
 public interface LessonGroupApplicationService {
@@ -28,5 +29,5 @@ public interface LessonGroupApplicationService {
    *
    * @param lessonGroupId レッスングループID
    */
-  void deleteLessonGroupById(Integer lessonGroupId);
+  void deleteLessonGroupById(UUID lessonGroupId);
 }

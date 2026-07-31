@@ -5,6 +5,7 @@ import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.model.user.UserSearchCondition;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /** ユーザーのリポジトリインターフェース。 */
 public interface UserRepository {
@@ -15,7 +16,7 @@ public interface UserRepository {
    * @param id ユーザーID
    * @return ユーザー（存在しない場合は空）
    */
-  Optional<User> findUserById(Integer id);
+  Optional<User> findUserById(UUID id);
 
   /**
    * 複数IDでユーザー一覧を取得する。
@@ -23,7 +24,7 @@ public interface UserRepository {
    * @param ids ユーザーIDリスト
    * @return ユーザーリスト
    */
-  List<User> findUsersByIds(List<Integer> ids);
+  List<User> findUsersByIds(List<UUID> ids);
 
   /**
    * 検索条件に合致するユーザーIDリストを取得する。
@@ -31,7 +32,7 @@ public interface UserRepository {
    * @param userSearchCondition 検索条件
    * @return ユーザーIDリスト
    */
-  List<Integer> findUserIdsBySearchConditions(UserSearchCondition userSearchCondition);
+  List<UUID> findUserIdsBySearchConditions(UserSearchCondition userSearchCondition);
 
   /**
    * メールアドレスでユーザーを取得する。
@@ -70,14 +71,14 @@ public interface UserRepository {
    *
    * @param id ユーザーID
    */
-  void deleteUserById(Integer id);
+  void deleteUserById(UUID id);
 
   /**
-   * 全ユーザーをID昇順で取得する。
+   * 全ユーザーを作成日時昇順で取得する。
    *
    * @return ユーザーリスト
    */
-  List<User> findAllByOrderByIdAsc();
+  List<User> findAllByOrderByCreatedAtAscIdAsc();
 
   /**
    * 指定プレフィックスで始まるサムネイルURLを取得する。

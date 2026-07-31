@@ -8,6 +8,7 @@ import com.everrefine.elms.application.dto.UserPageDto;
 import com.everrefine.elms.application.service.UserApplicationServiceImpl;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,7 @@ class UserDomainServiceTest {
   }
 
   // coursesにデータを挿入しcourseIdを取得する
-  public Integer createCourse(BigDecimal courseOrder, String title, String description) {
+  public UUID createCourse(BigDecimal courseOrder, String title, String description) {
     jdbcTemplate.update(
         """
             INSERT INTO courses (course_order, title, description, created_at, updated_at)
@@ -51,12 +52,11 @@ class UserDomainServiceTest {
         description,
         LocalDateTime.now(),
         LocalDateTime.now());
-    return jdbcTemplate.queryForObject(
-        "SELECT id FROM courses WHERE title = ?", Integer.class, title);
+    return jdbcTemplate.queryForObject("SELECT id FROM courses WHERE title = ?", UUID.class, title);
   }
 
   // lessoGroupにデータを挿入しlessonGroupIdを取得する
-  public Integer createLessonGroup(Integer courseId, BigDecimal lessonGroupOrder, String title) {
+  public UUID createLessonGroup(UUID courseId, BigDecimal lessonGroupOrder, String title) {
     jdbcTemplate.update(
         """
             INSERT INTO lesson_groups (course_id, lesson_group_order, title, created_at, updated_at)
@@ -68,13 +68,13 @@ class UserDomainServiceTest {
         LocalDateTime.now(),
         LocalDateTime.now());
     return jdbcTemplate.queryForObject(
-        "SELECT id FROM lesson_groups WHERE title = ?", Integer.class, title);
+        "SELECT id FROM lesson_groups WHERE title = ?", UUID.class, title);
   }
 
   // Lessonにデータを挿入しlessonIdを取得する
-  public Integer createLesson(
-      Integer lessonGroupId,
-      Integer courseId,
+  public UUID createLesson(
+      UUID lessonGroupId,
+      UUID courseId,
       BigDecimal lessonOrder,
       String title,
       String content,
@@ -93,12 +93,11 @@ class UserDomainServiceTest {
         videoRrl,
         LocalDateTime.now(),
         LocalDateTime.now());
-    return jdbcTemplate.queryForObject(
-        "SELECT id FROM lessons WHERE title = ?", Integer.class, title);
+    return jdbcTemplate.queryForObject("SELECT id FROM lessons WHERE title = ?", UUID.class, title);
   }
 
   // Userにデータを挿入しuserIdを取得する
-  public Integer createUser(
+  public UUID createUser(
       String emailAddress, String password, String realName, String userName, String userRole) {
     jdbcTemplate.update(
         """
@@ -114,7 +113,7 @@ class UserDomainServiceTest {
              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
             """,
         emailAddress,
-        encryptAndCreate(password).getValue(),
+        encryptAndCreate(password).value(),
         realName,
         userName,
         null,
@@ -122,11 +121,11 @@ class UserDomainServiceTest {
         LocalDateTime.now(),
         LocalDateTime.now());
     return jdbcTemplate.queryForObject(
-        "SELECT id FROM users WHERE email_address = ?", Integer.class, emailAddress);
+        "SELECT id FROM users WHERE email_address = ?", UUID.class, emailAddress);
   }
 
   // userLessonにデータを挿入する
-  public void createUserLesson(Integer userId, Integer lessonId) {
+  public void createUserLesson(UUID userId, UUID lessonId) {
     jdbcTemplate.update(
         """
             INSERT INTO user_lessons (user_id, lesson_id, created_at, updated_at)
@@ -141,11 +140,11 @@ class UserDomainServiceTest {
   @Test
   void 正常系_進捗率を取得できること() {
     // Arrange
-    Integer courseId = createCourse(new BigDecimal("1"), "テストコース", "コース説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
+    UUID courseId = createCourse(new BigDecimal("1"), "テストコース", "コース説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
 
     // 3つのレッスンを作成
-    Integer lesson1Id =
+    UUID lesson1Id =
         createLesson(
             lessonGroupId,
             courseId,
@@ -154,7 +153,7 @@ class UserDomainServiceTest {
             "説明1",
             "https://example.com/video1.mp4");
 
-    Integer lesson2Id =
+    UUID lesson2Id =
         createLesson(
             lessonGroupId,
             courseId,
@@ -163,7 +162,7 @@ class UserDomainServiceTest {
             "説明2",
             "https://example.com/video2.mp4");
 
-    Integer lesson3Id =
+    UUID lesson3Id =
         createLesson(
             lessonGroupId,
             courseId,
@@ -173,7 +172,7 @@ class UserDomainServiceTest {
             "https://example.com/video3.mp4");
 
     // Userを作成
-    Integer userId = createUser("test@example.com", "password", "テスト 太郎", "testuser", "GENERAL");
+    UUID userId = createUser("test@example.com", "password", "テスト 太郎", "testuser", "GENERAL");
 
     // 2つのUserLessonを作成
     createUserLesson(userId, lesson1Id);
@@ -190,7 +189,7 @@ class UserDomainServiceTest {
     UserPageDto userPageDto = userApplicationService.findUsers(userSearchCommand);
 
     // Assert
-    assertEquals(progressRate, userPageDto.getUserDtos().getFirst().getProgressRate());
+    assertEquals(progressRate, userPageDto.userDtos().getFirst().progressRate());
   }
 
   @Test
@@ -205,6 +204,6 @@ class UserDomainServiceTest {
     UserPageDto userPageDto = userApplicationService.findUsers(userSearchCommand);
 
     // Assert
-    assertEquals(new BigDecimal("0.0"), userPageDto.getUserDtos().getFirst().getProgressRate());
+    assertEquals(new BigDecimal("0.0"), userPageDto.userDtos().getFirst().progressRate());
   }
 }

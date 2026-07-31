@@ -1,28 +1,11 @@
 package com.everrefine.elms.domain.model.user;
 
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
+import java.util.UUID;
 
-@Getter
-@AllArgsConstructor
-@Table("user_login_histories")
-/** ユーザーログイン履歴のエンティティ。 */
-public class UserLoginHistory {
-
-  @Id private final Integer id;
-
-  @Column("user_id")
-  private Integer userId;
-
-  @Column("created_at")
-  private LocalDateTime createdAt;
-
-  @Column("updated_at")
-  private LocalDateTime updatedAt;
+/** ユーザーログイン履歴のドメインモデル。 */
+public record UserLoginHistory(
+    UUID id, UUID userId, LocalDateTime createdAt, LocalDateTime updatedAt) {
 
   /**
    * 新規作成用のログイン履歴を作成する。
@@ -30,7 +13,7 @@ public class UserLoginHistory {
    * @param userId ユーザーID
    * @return 新規作成用のログイン履歴
    */
-  public static UserLoginHistory create(Integer userId) {
+  public static UserLoginHistory create(UUID userId) {
     LocalDateTime now = LocalDateTime.now();
     return new UserLoginHistory(null, userId, now, now);
   }

@@ -1,12 +1,15 @@
 package com.everrefine.elms.application.service;
 
 import com.everrefine.elms.application.command.LessonCreateCommand;
+import com.everrefine.elms.application.command.LessonImportCommand;
 import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
 import com.everrefine.elms.application.command.LessonSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
+import com.everrefine.elms.application.dto.LessonImportResponseDto;
 import com.everrefine.elms.application.dto.LessonPageDto;
+import java.util.UUID;
 import org.springframework.core.io.Resource;
 
 /** レッスンアプリケーションサービスのインターフェース。 */
@@ -20,7 +23,7 @@ public interface LessonApplicationService {
    * @param lessonId レッスンID
    * @return レッスンDTO
    */
-  LessonDto findLessonById(Integer courseId, Integer lessonGroupId, Integer lessonId);
+  LessonDto findLessonById(UUID courseId, UUID lessonGroupId, UUID lessonId);
 
   /**
    * レッスン一覧をページング取得する。
@@ -36,7 +39,7 @@ public interface LessonApplicationService {
    * @param courseId コースID
    * @return コースとレッスン一覧DTO
    */
-  CourseLessonsDto findLessonsGroupedByLessonGroup(Integer courseId);
+  CourseLessonsDto findLessonsGroupedByLessonGroup(UUID courseId);
 
   /**
    * レッスンを作成する。
@@ -59,7 +62,7 @@ public interface LessonApplicationService {
    *
    * @param lessonId レッスンID
    */
-  void deleteLessonById(Integer lessonId);
+  void deleteLessonById(UUID lessonId);
 
   /**
    * レッスン順序を更新する。
@@ -75,4 +78,12 @@ public interface LessonApplicationService {
    * @return CSVリソース
    */
   Resource exportAllLessonsCsv();
+
+  /**
+   * CSVファイルをアップロードして指定コースのレッスン構成を一括更新する。
+   *
+   * @param lessonImportCommand レッスン取込用Command
+   * @return 取込したレッスングループ件数とレッスン件数
+   */
+  LessonImportResponseDto importLessonsCsv(LessonImportCommand lessonImportCommand);
 }

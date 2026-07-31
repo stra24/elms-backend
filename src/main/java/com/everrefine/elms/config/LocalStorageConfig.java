@@ -8,7 +8,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @Profile("dev")
-/** ローカルストレージ設定に関するクラス。 */
+/** ローカルストレージ設定。 */
 public class LocalStorageConfig implements WebMvcConfigurer {
 
   @Value("${upload.directory}")

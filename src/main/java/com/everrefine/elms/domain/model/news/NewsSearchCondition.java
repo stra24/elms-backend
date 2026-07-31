@@ -2,23 +2,13 @@ package com.everrefine.elms.domain.model.news;
 
 import com.everrefine.elms.domain.model.PagerForRequest;
 import java.time.LocalDate;
-import lombok.Value;
 
 /** お知らせ検索条件の値オブジェクト。 */
-@Value
-public class NewsSearchCondition {
-
-  /** リクエスト用のページャー情報 */
-  PagerForRequest pagerForRequest;
-
-  /** お知らせのタイトル */
-  String title;
-
-  /** 検索条件：開始日 */
-  LocalDate createdDateFrom;
-
-  /** 検索条件：終了日 */
-  LocalDate createdDateTo;
+public record NewsSearchCondition(
+    PagerForRequest pagerForRequest,
+    String title,
+    LocalDate createdDateFrom,
+    LocalDate createdDateTo) {
 
   /**
    * お知らせ検索条件を作成する。
@@ -31,10 +21,7 @@ public class NewsSearchCondition {
    */
   public NewsSearchCondition(
       int pageNum, int pageSize, String title, LocalDate createdDateFrom, LocalDate createdDateTo) {
-    this.pagerForRequest = new PagerForRequest(pageNum, pageSize);
-    this.title = title;
-    this.createdDateFrom = createdDateFrom;
-    this.createdDateTo = createdDateTo;
+    this(new PagerForRequest(pageNum, pageSize), title, createdDateFrom, createdDateTo);
   }
 
   /**
@@ -43,7 +30,7 @@ public class NewsSearchCondition {
    * @return 1ページ当たりの件数
    */
   public int getPageSize() {
-    return pagerForRequest.getPageSize();
+    return pagerForRequest.pageSize();
   }
 
   /**

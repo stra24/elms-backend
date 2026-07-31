@@ -3,22 +3,23 @@ package com.everrefine.elms.domain.model.user;
 import com.everrefine.elms.domain.exception.InvalidValueException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import lombok.Value;
 
 /** 進捗率を表す値オブジェクト。 */
-@Value
-public class ProgressRate {
+public record ProgressRate(BigDecimal value) {
 
-  BigDecimal value;
-
-  private ProgressRate(BigDecimal value) {
+  /**
+   * 進捗率を作成する。値は小数点第1位で切り捨てられる。
+   *
+   * @param value 進捗率（0.0〜100.0）
+   */
+  public ProgressRate {
     if (value == null) {
       throw new InvalidValueException("進捗率の値はnullにすることはできません");
     }
     if (value.compareTo(BigDecimal.ZERO) < 0 || value.compareTo(BigDecimal.valueOf(100)) > 0) {
       throw new InvalidValueException("進捗率は0.0から100.0の間である必要があります: " + value);
     }
-    this.value = value.setScale(1, RoundingMode.DOWN);
+    value = value.setScale(1, RoundingMode.DOWN);
   }
 
   /**

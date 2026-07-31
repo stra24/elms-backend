@@ -14,7 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -69,7 +69,7 @@ public class NewsController {
     @ApiResponse(responseCode = "404", description = "お知らせが見つかりません")
   })
   @GetMapping("/{newsId}")
-  public NewsDto findNewsById(@PathVariable @Positive Integer newsId) {
+  public NewsDto findNewsById(@PathVariable UUID newsId) {
     return newsApplicationService.findNewsById(newsId);
   }
 
@@ -109,8 +109,7 @@ public class NewsController {
   @PreAuthorize("hasAuthority('ADMIN')")
   @PutMapping("/{newsId}")
   public void updateNews(
-      @PathVariable @Positive Integer newsId,
-      @Valid @RequestBody NewsUpdateRequest newsUpdateRequest) {
+      @PathVariable UUID newsId, @Valid @RequestBody NewsUpdateRequest newsUpdateRequest) {
     NewsUpdateCommand newsUpdateCommand = newsUpdateRequest.toCommand(newsId);
     newsApplicationService.updateNews(newsUpdateCommand);
   }
@@ -131,7 +130,7 @@ public class NewsController {
   @PreAuthorize("hasAuthority('ADMIN')")
   @DeleteMapping("/{newsId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void deleteNewsById(@PathVariable @Positive Integer newsId) {
+  public void deleteNewsById(@PathVariable UUID newsId) {
     newsApplicationService.deleteNewsById(newsId);
   }
 }

@@ -1,17 +1,10 @@
 package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.domain.model.news.News;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.util.UUID;
 
 /** お知らせ作成用のコマンド。 */
-@Getter
-@AllArgsConstructor
-public class NewsCreateCommand {
-
-  private Integer id;
-  private String title;
-  private String content;
+public record NewsCreateCommand(UUID id, String title, String content) {
 
   /**
    * Newsエンティティに変換する。

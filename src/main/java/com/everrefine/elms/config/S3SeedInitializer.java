@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 @Profile("prd")
 @RequiredArgsConstructor
 @Slf4j
-/** S3シードデータ初期化に関するクラス。 */
+/** S3シードデータ初期化。 */
 public class S3SeedInitializer implements ApplicationRunner {
 
   @Value("${cloud.aws.s3.bucket}")

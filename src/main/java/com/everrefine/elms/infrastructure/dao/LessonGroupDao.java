@@ -1,10 +1,12 @@
 package com.everrefine.elms.infrastructure.dao;
 
-import com.everrefine.elms.domain.model.lesson.LessonGroup;
-import com.everrefine.elms.domain.model.lesson.LessonGroupWithLesson;
+import com.everrefine.elms.infrastructure.entity.lesson.LessonGroupEntity;
+import com.everrefine.elms.infrastructure.row.LessonGroupWithLessonRow;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jdbc.repository.query.Modifying;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +14,7 @@ import org.springframework.stereotype.Repository;
 
 /** レッスングループのDAOインターフェース。 */
 @Repository
-public interface LessonGroupDao extends CrudRepository<LessonGroup, Integer> {
+public interface LessonGroupDao extends CrudRepository<LessonGroupEntity, UUID> {
 
   @Query(
       """
@@ -35,7 +37,7 @@ public interface LessonGroupDao extends CrudRepository<LessonGroup, Integer> {
       WHERE lg.course_id = :courseId
       ORDER BY lg.lesson_group_order ASC, l.lesson_order ASC
       """)
-  List<LessonGroupWithLesson> findLessonGroupsByCourseId(@Param("courseId") Integer courseId);
+  List<LessonGroupWithLessonRow> findLessonGroupsByCourseId(@Param("courseId") UUID courseId);
 
   @Query(
       """
@@ -43,5 +45,13 @@ public interface LessonGroupDao extends CrudRepository<LessonGroup, Integer> {
       FROM lesson_groups
       WHERE course_id = :courseId
       """)
-  Optional<BigDecimal> findMaxLessonGroupOrderByCourseId(@Param("courseId") Integer courseId);
+  Optional<BigDecimal> findMaxLessonGroupOrderByCourseId(@Param("courseId") UUID courseId);
+
+  @Modifying
+  @Query(
+      """
+      DELETE FROM lesson_groups
+      WHERE course_id = :courseId
+      """)
+  void deleteByCourseId(@Param("courseId") UUID courseId);
 }

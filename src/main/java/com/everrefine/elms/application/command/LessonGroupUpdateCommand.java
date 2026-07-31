@@ -1,14 +1,10 @@
 package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
-import lombok.Data;
+import java.util.UUID;
 
 /** レッスングループ更新用のコマンド。 */
-@Data
-public class LessonGroupUpdateCommand {
-
-  private final Integer id;
-  private final String title;
+public record LessonGroupUpdateCommand(UUID id, String title) {
 
   /**
    * LessonGroupエンティティに変換する。

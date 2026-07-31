@@ -5,6 +5,7 @@ import com.everrefine.elms.domain.model.PagerForRequest;
 import com.everrefine.elms.domain.model.course.Course;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /** コースのリポジトリインターフェース。 */
 public interface CourseRepository {
@@ -28,7 +29,7 @@ public interface CourseRepository {
    *
    * @param id コースID
    */
-  void deleteCourseById(Integer id);
+  void deleteCourseById(UUID id);
 
   /**
    * IDでコースを取得する。
@@ -36,7 +37,7 @@ public interface CourseRepository {
    * @param id コースID
    * @return コース（存在しない場合は空）
    */
-  Optional<Course> findCourseById(Integer id);
+  Optional<Course> findCourseById(UUID id);
 
   /**
    * ページングしてコース一覧を取得する。

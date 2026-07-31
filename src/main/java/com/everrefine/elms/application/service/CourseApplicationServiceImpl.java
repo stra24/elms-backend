@@ -9,11 +9,12 @@ import com.everrefine.elms.domain.model.PagerForRequest;
 import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.repository.CourseRepository;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** コースアプリケーションサービスの実装に関するクラス。 */
+/** コースアプリケーションサービスの実装。 */
 @Service
 @AllArgsConstructor
 public class CourseApplicationServiceImpl implements CourseApplicationService {
@@ -22,7 +23,7 @@ public class CourseApplicationServiceImpl implements CourseApplicationService {
 
   @Override
   @Transactional(readOnly = true)
-  public CourseDto findCourseById(Integer courseId) {
+  public CourseDto findCourseById(UUID courseId) {
     Course course =
         courseRepository
             .findCourseById(courseId)
@@ -45,7 +46,7 @@ public class CourseApplicationServiceImpl implements CourseApplicationService {
   @Transactional
   public void createCourse(CourseCreateCommand courseCreateCommand) {
     var courseOrder = courseRepository.issueCourseOrder();
-    courseRepository.createCourse(courseCreateCommand.toCourse(courseOrder.getValue()));
+    courseRepository.createCourse(courseCreateCommand.toCourse(courseOrder.value()));
   }
 
   @Override
@@ -53,17 +54,17 @@ public class CourseApplicationServiceImpl implements CourseApplicationService {
   public void updateCourse(CourseUpdateCommand courseUpdateCommand) {
     Course course =
         courseRepository
-            .findCourseById(courseUpdateCommand.getId())
+            .findCourseById(courseUpdateCommand.id())
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(
-                        Course.class, String.valueOf(courseUpdateCommand.getId())));
+                        Course.class, String.valueOf(courseUpdateCommand.id())));
     courseRepository.updateCourse(courseUpdateCommand.toCourse(course));
   }
 
   @Override
   @Transactional
-  public void deleteCourseById(Integer courseId) {
+  public void deleteCourseById(UUID courseId) {
     // コースが存在しなくてもエラーにはしない。
     courseRepository
         .findCourseById(courseId)

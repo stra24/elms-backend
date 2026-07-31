@@ -1,12 +1,7 @@
 package com.everrefine.elms.application.command;
 
-import lombok.Data;
+import java.util.UUID;
 
 /** レッスン順序更新用のコマンド。 */
-@Data
-public class LessonOrderUpdateCommand {
-
-  private final Integer lessonId;
-  private final Integer precedingLessonId;
-  private final Integer followingLessonId;
-}
+public record LessonOrderUpdateCommand(
+    UUID lessonId, UUID precedingLessonId, UUID followingLessonId) {}

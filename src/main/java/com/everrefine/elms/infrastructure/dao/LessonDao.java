@@ -1,32 +1,34 @@
 package com.everrefine.elms.infrastructure.dao;
 
-import com.everrefine.elms.domain.model.lesson.Lesson;
-import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
+import com.everrefine.elms.infrastructure.entity.lesson.LessonEntity;
+import com.everrefine.elms.infrastructure.row.LessonWithCourseAndLessonGroupRow;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jdbc.repository.query.Modifying;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 
 /** レッスンのDAOインターフェース。 */
-public interface LessonDao extends CrudRepository<Lesson, Integer> {
+public interface LessonDao extends CrudRepository<LessonEntity, UUID> {
 
   @Query(
       """
           SELECT * FROM lessons WHERE
-          (:courseId IS NULL OR course_id = :courseId) AND
-          (:lessonGroupId IS NULL OR lesson_group_id = :lessonGroupId) AND
+          (CAST(:courseId AS UUID) IS NULL OR course_id = CAST(:courseId AS UUID)) AND
+          (CAST(:lessonGroupId AS UUID) IS NULL OR lesson_group_id = CAST(:lessonGroupId AS UUID)) AND
           (:title IS NULL OR title LIKE CONCAT('%', :title, '%')) AND
           (CAST(:createdDateFrom AS DATE) IS NULL OR created_at >= CAST(:createdDateFrom AS DATE)) AND
           (CAST(:createdDateTo AS DATE) IS NULL OR created_at < CAST(:createdDateTo AS DATE) + INTERVAL '1 day')
           ORDER BY lesson_order ASC
           LIMIT :limit OFFSET :offset
           """)
-  List<Lesson> findLessons(
-      @Param("courseId") Integer courseId,
-      @Param("lessonGroupId") Integer lessonGroupId,
+  List<LessonEntity> findLessons(
+      @Param("courseId") UUID courseId,
+      @Param("lessonGroupId") UUID lessonGroupId,
       @Param("title") String title,
       @Param("createdDateFrom") LocalDate createdDateFrom,
       @Param("createdDateTo") LocalDate createdDateTo,
@@ -36,15 +38,15 @@ public interface LessonDao extends CrudRepository<Lesson, Integer> {
   @Query(
       """
           SELECT COUNT(*) FROM lessons WHERE
-          (:courseId IS NULL OR course_id = :courseId) AND
-          (:lessonGroupId IS NULL OR lesson_group_id = :lessonGroupId) AND
+          (CAST(:courseId AS UUID) IS NULL OR course_id = CAST(:courseId AS UUID)) AND
+          (CAST(:lessonGroupId AS UUID) IS NULL OR lesson_group_id = CAST(:lessonGroupId AS UUID)) AND
           (:title IS NULL OR title LIKE CONCAT('%', :title, '%')) AND
           (CAST(:createdDateFrom AS DATE) IS NULL OR created_at >= CAST(:createdDateFrom AS DATE)) AND
           (CAST(:createdDateTo AS DATE) IS NULL OR created_at < CAST(:createdDateTo AS DATE) + INTERVAL '1 day')
           """)
   int countLessons(
-      @Param("courseId") Integer courseId,
-      @Param("lessonGroupId") Integer lessonGroupId,
+      @Param("courseId") UUID courseId,
+      @Param("lessonGroupId") UUID lessonGroupId,
       @Param("title") String title,
       @Param("createdDateFrom") LocalDate createdDateFrom,
       @Param("createdDateTo") LocalDate createdDateTo);
@@ -56,9 +58,9 @@ public interface LessonDao extends CrudRepository<Lesson, Integer> {
           WHERE lesson_group_id = :lessonGroupId
           """)
   Optional<BigDecimal> findMaxLessonOrderByLessonGroupId(
-      @Param("lessonGroupId") Integer lessonGroupId);
+      @Param("lessonGroupId") UUID lessonGroupId);
 
-  List<Lesson> findByIdIn(@Param("lessonIds") List<Integer> lessonIds);
+  List<LessonEntity> findByIdIn(@Param("lessonIds") List<UUID> lessonIds);
 
   @Query(
       """
@@ -67,7 +69,15 @@ public interface LessonDao extends CrudRepository<Lesson, Integer> {
           WHERE lesson_group_id = :lessonGroupId
           ORDER BY lesson_order ASC
           """)
-  List<Lesson> findLessonsByLessonGroupId(@Param("lessonGroupId") Integer lessonGroupId);
+  List<LessonEntity> findLessonsByLessonGroupId(@Param("lessonGroupId") UUID lessonGroupId);
+
+  @Modifying
+  @Query(
+      """
+          DELETE FROM lessons
+          WHERE course_id = :courseId
+          """)
+  void deleteByCourseId(@Param("courseId") UUID courseId);
 
   @Query(
       """
@@ -99,7 +109,7 @@ public interface LessonDao extends CrudRepository<Lesson, Integer> {
           ON lg.course_id = c.id
           INNER JOIN lessons l
           ON l.lesson_group_id = lg.id
-         ORDER BY c.id ASC, lg.id ASC, l.id ASC
+         ORDER BY c.course_order ASC, lg.lesson_group_order ASC, l.lesson_order ASC
          """)
-  List<LessonWithCourseAndLessonGroup> findByAllLessons();
+  List<LessonWithCourseAndLessonGroupRow> findByAllLessons();
 }

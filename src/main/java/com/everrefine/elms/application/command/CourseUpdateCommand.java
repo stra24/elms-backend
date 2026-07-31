@@ -5,20 +5,16 @@ import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.util.UUID;
 
 /** 更新用コースのコマンド。 */
-@Getter
-@AllArgsConstructor
-public class CourseUpdateCommand {
-
-  @NotNull private Integer id;
-  @NotNull private BigDecimal courseOrder;
-  @NotNull private String title;
-  @Nullable private String description;
-  @Nullable private String thumbnailUrl;
-  @NotNull private LocalDateTime updatedAt;
+public record CourseUpdateCommand(
+    @NotNull UUID id,
+    @NotNull BigDecimal courseOrder,
+    @NotNull String title,
+    @Nullable String description,
+    @Nullable String thumbnailUrl,
+    @NotNull LocalDateTime updatedAt) {
 
   /**
    * Courseエンティティに変換する。

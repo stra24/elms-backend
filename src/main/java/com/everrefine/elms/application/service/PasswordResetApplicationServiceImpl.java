@@ -15,7 +15,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** パスワードリセットアプリケーションサービスの実装に関するクラス。 */
+/** パスワードリセットアプリケーションサービスの実装。 */
 @Service
 @RequiredArgsConstructor
 public class PasswordResetApplicationServiceImpl implements PasswordResetApplicationService {
@@ -35,7 +35,7 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
   public void requestPasswordReset(PasswordResetRequestCommand command) {
     Optional<User> userOpt;
     try {
-      userOpt = userRepository.findUserByEmailAddress(new EmailAddress(command.getEmailAddress()));
+      userOpt = userRepository.findUserByEmailAddress(new EmailAddress(command.emailAddress()));
     } catch (IllegalArgumentException e) {
       return;
     }
@@ -45,9 +45,9 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
     }
 
     User user = userOpt.get();
-    PasswordResetToken resetToken = PasswordResetToken.create(user.getId());
+    PasswordResetToken resetToken = PasswordResetToken.create(user.id());
     passwordResetTokenRepository.save(resetToken);
-    sendPasswordResetEmail(command.getEmailAddress(), resetToken.getToken());
+    sendPasswordResetEmail(command.emailAddress(), resetToken.token());
   }
 
   @Override
@@ -55,7 +55,7 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
   public String confirmPasswordReset(PasswordResetConfirmCommand command) {
     PasswordResetToken resetToken =
         passwordResetTokenRepository
-            .findByToken(command.getToken())
+            .findByToken(command.token())
             .orElseThrow(() -> new IllegalArgumentException("無効なトークンです"));
 
     if (resetToken.isExpired()) {
@@ -68,11 +68,11 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
 
     User user =
         userRepository
-            .findUserById(resetToken.getUserId())
+            .findUserById(resetToken.userId())
             .orElseThrow(() -> new IllegalArgumentException("ユーザーが見つかりません"));
 
-    String emailAddress = user.getEmailAddress().getValue();
-    userRepository.updateUser(user.update(null, command.getNewPassword(), null, null, null, null));
+    String emailAddress = user.emailAddress().value();
+    userRepository.updateUser(user.update(null, command.newPassword(), null, null, null, null));
     passwordResetTokenRepository.save(resetToken.markAsUsed());
     sendPasswordResetCompleteEmail(emailAddress);
 

@@ -11,7 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -50,7 +50,7 @@ public class LessonGroupController {
   })
   @PostMapping
   public LessonGroupDto createLessonGroup(
-      @PathVariable @Positive Integer courseId,
+      @PathVariable UUID courseId,
       @RequestBody @Valid LessonGroupCreateRequest lessonGroupCreateRequest) {
     LessonGroupCreateCommand lessonGroupCreateCommand =
         lessonGroupCreateRequest.toCommand(courseId);
@@ -76,8 +76,8 @@ public class LessonGroupController {
   })
   @PutMapping("/{lessonGroupId}")
   public LessonGroupDto updateLessonGroup(
-      @PathVariable @Positive Integer courseId,
-      @PathVariable @Positive Integer lessonGroupId,
+      @PathVariable UUID courseId,
+      @PathVariable UUID lessonGroupId,
       @RequestBody @Valid LessonGroupUpdateRequest lessonGroupUpdateRequest) {
     LessonGroupUpdateCommand lessonGroupUpdateCommand =
         lessonGroupUpdateRequest.toCommand(lessonGroupId);
@@ -101,8 +101,7 @@ public class LessonGroupController {
   })
   @DeleteMapping("/{lessonGroupId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void deleteLessonGroup(
-      @PathVariable @Positive Integer courseId, @PathVariable @Positive Integer lessonGroupId) {
+  public void deleteLessonGroup(@PathVariable UUID courseId, @PathVariable UUID lessonGroupId) {
     lessonGroupApplicationService.deleteLessonGroupById(lessonGroupId);
   }
 }

@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
-/** 未使用ファイル削除スケジューラーに関するクラス。 */
+/** 未使用ファイル削除スケジューラー。 */
 @Configuration
 @EnableScheduling
 @RequiredArgsConstructor

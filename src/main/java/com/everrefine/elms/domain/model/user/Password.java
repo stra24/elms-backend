@@ -2,29 +2,25 @@ package com.everrefine.elms.domain.model.user;
 
 import com.everrefine.elms.domain.exception.InvalidValueException;
 import java.util.regex.Pattern;
-import lombok.Value;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 /** パスワードの値オブジェクト。 */
-@Value
-public class Password {
+public record Password(String value) {
 
   // BCrypt形式であることを確認する正規表現
   private static final Pattern BCRYPT_PATTERN =
       Pattern.compile("^\\$2[aby]?\\$\\d{2}\\$[./A-Za-z0-9]{53}$");
-  String value;
 
   /**
    * BCrypt形式のパスワード文字列からパスワードを作成する。
    *
    * @param value BCrypt形式のパスワード文字列
    */
-  public Password(String value) {
+  public Password {
     if (value == null || !BCRYPT_PATTERN.matcher(value).matches()) {
       throw new InvalidValueException("パスワードの形式が不正です");
     }
-    this.value = value;
   }
 
   /**

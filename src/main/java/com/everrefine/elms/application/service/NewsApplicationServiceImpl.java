@@ -9,11 +9,12 @@ import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.news.News;
 import com.everrefine.elms.domain.repository.NewsRepository;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** お知らせアプリケーションサービスの実装に関するクラス。 */
+/** お知らせアプリケーションサービスの実装。 */
 @Service
 @AllArgsConstructor
 public class NewsApplicationServiceImpl implements NewsApplicationService {
@@ -22,7 +23,7 @@ public class NewsApplicationServiceImpl implements NewsApplicationService {
 
   @Override
   @Transactional(readOnly = true)
-  public NewsDto findNewsById(Integer newsId) {
+  public NewsDto findNewsById(UUID newsId) {
     News news =
         newsRepository
             .findNewsById(newsId)
@@ -34,14 +35,14 @@ public class NewsApplicationServiceImpl implements NewsApplicationService {
   @Transactional(readOnly = true)
   public NewsPageDto findNews(NewsSearchCommand newsSearchCommand) {
     var newsSearchCondition = newsSearchCommand.toSearchCondition();
-    List<Integer> newsIds = newsRepository.findNewsIdsBySearchConditions(newsSearchCondition);
+    List<UUID> newsIds = newsRepository.findNewsIdsBySearchConditions(newsSearchCondition);
     List<News> news = newsRepository.findNewsByIds(newsIds);
     List<NewsDto> newsDtos = news.stream().map(NewsDto::from).toList();
     int totalSize = newsRepository.countNews(newsSearchCondition);
     return NewsPageDto.from(
         newsDtos,
-        newsSearchCondition.getPagerForRequest().getPageNum(),
-        newsSearchCondition.getPagerForRequest().getPageSize(),
+        newsSearchCondition.pagerForRequest().pageNum(),
+        newsSearchCondition.pagerForRequest().pageSize(),
         totalSize);
   }
 
@@ -56,17 +57,17 @@ public class NewsApplicationServiceImpl implements NewsApplicationService {
   public void updateNews(NewsUpdateCommand newsUpdateCommand) {
     News currentNews =
         newsRepository
-            .findNewsById(newsUpdateCommand.getId())
+            .findNewsById(newsUpdateCommand.id())
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(
-                        News.class, String.valueOf(newsUpdateCommand.getId())));
+                        News.class, String.valueOf(newsUpdateCommand.id())));
     newsRepository.updateNews(newsUpdateCommand.toNews(currentNews));
   }
 
   @Override
   @Transactional
-  public void deleteNewsById(Integer newsId) {
+  public void deleteNewsById(UUID newsId) {
     newsRepository.findNewsById(newsId).ifPresent(news -> newsRepository.deleteNewsById(newsId));
   }
 }

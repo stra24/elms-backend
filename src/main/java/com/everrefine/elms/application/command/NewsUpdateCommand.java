@@ -2,18 +2,10 @@ package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.domain.model.news.News;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.util.UUID;
 
 /** お知らせ更新用のコマンド。 */
-@Getter
-@AllArgsConstructor
-public class NewsUpdateCommand {
-
-  private Integer id;
-  private String title;
-  private String content;
-  private LocalDateTime updatedAt;
+public record NewsUpdateCommand(UUID id, String title, String content, LocalDateTime updatedAt) {
 
   /**
    * Newsエンティティに変換する。

@@ -5,10 +5,11 @@ import com.everrefine.elms.domain.model.Order;
 import com.everrefine.elms.domain.repository.LessonRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/** {@link LessonDomainService} の実装クラス。 */
+/** {@link LessonDomainService} の実装。 */
 @Component
 @RequiredArgsConstructor
 public class LessonDomainServiceImpl implements LessonDomainService {
@@ -16,11 +17,11 @@ public class LessonDomainServiceImpl implements LessonDomainService {
   private final LessonRepository lessonRepository;
 
   @Override
-  public BigDecimal issueLessonOrder(Integer lessonGroupId) {
+  public BigDecimal issueLessonOrder(UUID lessonGroupId) {
     return lessonRepository
         .findMaxLessonOrderByLessonGroupId(lessonGroupId)
         .map(maxOrder -> maxOrder.add(Order.INTERVAL_ORDER))
-        .orElse(BigDecimal.ONE);
+        .orElse(Order.FIRST_ORDER);
   }
 
   @Override

@@ -4,6 +4,7 @@ import com.everrefine.elms.application.command.CourseCreateCommand;
 import com.everrefine.elms.application.command.CourseUpdateCommand;
 import com.everrefine.elms.application.dto.CourseDto;
 import com.everrefine.elms.application.dto.CoursePageDto;
+import java.util.UUID;
 
 /** コースアプリケーションサービスのインターフェース。 */
 public interface CourseApplicationService {
@@ -14,7 +15,7 @@ public interface CourseApplicationService {
    * @param CourseId コースID
    * @return コースDTO
    */
-  CourseDto findCourseById(Integer CourseId);
+  CourseDto findCourseById(UUID CourseId);
 
   /**
    * コース一覧をページング取得する。
@@ -44,5 +45,5 @@ public interface CourseApplicationService {
    *
    * @param courseId コースID
    */
-  void deleteCourseById(Integer courseId);
+  void deleteCourseById(UUID courseId);
 }

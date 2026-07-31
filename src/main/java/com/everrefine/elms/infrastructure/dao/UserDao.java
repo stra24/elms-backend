@@ -1,9 +1,10 @@
 package com.everrefine.elms.infrastructure.dao;
 
-import com.everrefine.elms.domain.model.user.User;
+import com.everrefine.elms.infrastructure.entity.user.UserEntity;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jdbc.repository.query.Modifying;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Repository;
 
 /** ユーザーのDAOインターフェース。 */
 @Repository
-public interface UserDao extends CrudRepository<User, Integer> {
+public interface UserDao extends CrudRepository<UserEntity, UUID> {
 
   @Query(
       """
@@ -20,7 +21,7 @@ public interface UserDao extends CrudRepository<User, Integer> {
       FROM users
       WHERE email_address = :emailAddress
       """)
-  Optional<User> findByEmailAddress(@Param("emailAddress") String emailAddress);
+  Optional<UserEntity> findByEmailAddress(@Param("emailAddress") String emailAddress);
 
   @Query(
       """
@@ -29,7 +30,7 @@ public interface UserDao extends CrudRepository<User, Integer> {
           WHERE email_address = :emailAddress
           And password = :password
           """)
-  Optional<User> findByEmailAddressAndPassword(
+  Optional<UserEntity> findByEmailAddressAndPassword(
       @Param("emailAddress") String emailAddress, @Param("password") String password);
 
   @Query(
@@ -39,7 +40,7 @@ public interface UserDao extends CrudRepository<User, Integer> {
           WHERE id IN (:ids)
           ORDER BY created_at DESC
           """)
-  List<User> findByIdIn(@Param("ids") List<Integer> ids);
+  List<UserEntity> findByIdIn(@Param("ids") List<UUID> ids);
 
   @Query(
       """
@@ -55,7 +56,7 @@ public interface UserDao extends CrudRepository<User, Integer> {
           LIMIT :pageSize
           OFFSET :offset
           """)
-  List<Integer> findUserIdsBySearchConditions(
+  List<UUID> findUserIdsBySearchConditions(
       @Param("userId") String userId,
       @Param("userRole") String userRole,
       @Param("realName") String realName,
@@ -87,7 +88,7 @@ public interface UserDao extends CrudRepository<User, Integer> {
       @Param("createdDateFrom") LocalDate createdDateFrom,
       @Param("createdDateTo") LocalDate createdDateTo);
 
-  List<User> findAllByOrderByIdAsc();
+  List<UserEntity> findAllByOrderByCreatedAtAscIdAsc();
 
   @Query(
       """

@@ -14,16 +14,23 @@ skinparam noteBorderColor #999999
 actor Client
 participant "LessonGroupController" as LGController
 participant "LessonController" as LController
+participant "CourseController" as CController
 participant "LessonGroupApplicationService" as LGAppService
 participant "LessonApplicationService" as LAppService
 participant "LessonGroupDomainService" as LGDomainService
 participant "LessonDomainService" as LDomainService
 participant "LessonGroupRepository" as LGRepo
 participant "LessonRepository" as LRepo
+participant "CourseRepository" as CourseRepo
 database "DB" as DB
 
 note over Client
-  全APIはJWT認証済みであることが前提（JwtFilterは省略）
+  GET /api/courses/{courseId}/lessons、GET /api/courses/lessons/export、
+  POST /api/courses/{courseId}/lessons/import は CourseController が受け付ける。
+end note
+
+note over Client
+  全APIはJWT認証済みであることが前提（認証・JWT検証の詳細は「認証」シーケンス図を参照）
 end note
 
 ' ============================================================
@@ -37,10 +44,10 @@ LGController -> LGAppService : createLessonGroup(LessonGroupCreateCommand)
 
 LGAppService -> LGDomainService : issueLessonGroupOrder(courseId)
 LGDomainService -> LGRepo : 当該コースの最大lessonGroupOrderを取得
-LGRepo -> DB : SELECT MAX(lessonGroupOrder) WHERE courseId = ?
+LGRepo -> DB : SELECT MAX(lesson_group_order) WHERE course_id = ?
 DB --> LGRepo : maxOrder
 LGRepo --> LGDomainService : maxOrder
-LGDomainService --> LGAppService : 新しいOrder（maxOrder + 1）
+LGDomainService --> LGAppService : 新しいOrder（末尾に追加）
 
 LGAppService -> LGRepo : createLessonGroup(LessonGroup.create(..., order))
 LGRepo -> DB : INSERT INTO lesson_groups
@@ -48,7 +55,7 @@ DB --> LGRepo : 作成されたLessonGroup
 LGRepo --> LGAppService : LessonGroup
 
 LGAppService --> LGController : LessonGroupDto
-LGController --> Client : 200 OK { id, courseId, title, lessonGroupOrder, ... }
+LGController --> Client : 200 OK { id, courseId, lessonGroupOrder, name, ... }
 
 ' ============================================================
 ' レッスングループ更新
@@ -75,12 +82,12 @@ else レッスングループが存在する
   LGRepo --> LGAppService : LessonGroup
 
   LGAppService -> LRepo : findLessonsByLessonGroupId(lessonGroupId)
-  LRepo -> DB : SELECT * FROM lessons WHERE lessonGroupId = ?
+  LRepo -> DB : SELECT * FROM lessons WHERE lesson_group_id = ?
   DB --> LRepo : List<Lesson>
   LRepo --> LGAppService : List<Lesson>
 
-  LGAppService --> LGController : LessonGroupDto（lessonDtos含む）
-  LGController --> Client : 200 OK { id, title, lessons[], ... }
+  LGAppService --> LGController : LessonGroupDto（lessons含む）
+  LGController --> Client : 200 OK { id, name, lessons[], ... }
 end
 
 ' ============================================================
@@ -114,39 +121,22 @@ LGController --> Client : 204 No Content
 ' ============================================================
 == コース内レッスン一覧取得 (GET /api/courses/{courseId}/lessons) ==
 
-Client -> LController : GET /api/courses/{courseId}/lessons
+Client -> CController : GET /api/courses/{courseId}/lessons
 
-LController -> LAppService : findLessonsGroupedByLessonGroup(courseId)
+CController -> LAppService : findLessonsGroupedByLessonGroup(courseId)
 
 LAppService -> LRepo : findLessonsGroupedByLessonGroup(courseId)
-LRepo -> DB : SELECT lesson_groups JOIN lessons\nWHERE courseId = ?\nORDER BY lessonGroupOrder, lessonOrder
-DB --> LRepo : LessonGroupWithLesson[]（JOINした行）
-LRepo --> LAppService : CourseLessonsDto
+LRepo -> DB : SELECT lesson_groups LEFT JOIN lessons\nWHERE course_id = ?\nORDER BY lesson_group_order, lesson_order
+DB --> LRepo : JOINした行（LessonGroupWithLessonRow[]）
+note over LRepo
+  行をレッスングループ単位で入れ子にまとめ
+  List<LessonGroupWithLessons> に変換（toDomainList）
+end note
+LRepo --> LAppService : List<LessonGroupWithLessons>
 
-LAppService --> LController : CourseLessonsDto
-LController --> Client : 200 OK { lessonGroups: [{ id, name, lessons: [...] }] }
-
-' ============================================================
-' コース内先頭レッスン取得
-' ============================================================
-== コース内先頭レッスン取得 (GET /api/courses/{courseId}/lessons/first) ==
-
-Client -> LController : GET /api/courses/{courseId}/lessons/first
-
-LController -> LAppService : findFirstLessonIdByCourseId(courseId)
-
-LAppService -> LRepo : findFirstLessonByCourseId(courseId)
-LRepo -> DB : SELECT TOP 1 FROM lessons\nJOIN lesson_groups ON ...\nWHERE courseId = ?\nORDER BY lessonGroupOrder, lessonOrder
-DB --> LRepo : Optional<Lesson>
-
-alt レッスンが存在しない
-  LAppService --> LController : FirstLessonDto.none()
-  LController --> Client : 200 OK { lessonId: null }
-else レッスンが存在する
-  LRepo --> LAppService : Lesson
-  LAppService --> LController : FirstLessonDto
-  LController --> Client : 200 OK { lessonId: 1, lessonGroupId: 1 }
-end
+LAppService -> LAppService : 各グループを LessonGroupDto に変換し\nCourseLessonsDto を組み立て
+LAppService --> CController : CourseLessonsDto
+CController --> Client : 200 OK { courseId, lessonGroups: [{ id, name, lessons: [...] }] }
 
 ' ============================================================
 ' レッスン詳細取得（管理者向け）
@@ -187,10 +177,10 @@ LController -> LAppService : createLesson(LessonCreateCommand)
 
 LAppService -> LDomainService : issueLessonOrder(lessonGroupId)
 LDomainService -> LRepo : 当該レッスングループの最大lessonOrderを取得
-LRepo -> DB : SELECT MAX(lessonOrder) WHERE lessonGroupId = ?
+LRepo -> DB : SELECT MAX(lesson_order) WHERE lesson_group_id = ?
 DB --> LRepo : maxOrder
 LRepo --> LDomainService : maxOrder
-LDomainService --> LAppService : 新しいOrder（maxOrder + 1）
+LDomainService --> LAppService : 新しいOrder（末尾に追加）
 
 LAppService -> LRepo : createLesson(Lesson.create(..., order))
 LRepo -> DB : INSERT INTO lessons
@@ -276,19 +266,85 @@ LRepo --> LAppService : List<Lesson>
 
 LAppService -> LDomainService : calculateNewOrder(precedingOrder, followingOrder)
 note over LDomainService
-  前後のorderの中間値を計算する。
-  ・先頭移動: followingOrder / 2
-  ・末尾移動: precedingOrder + 1
+  前後のorderから新しい順序値を計算する。
+  ・先頭移動(preceding=null): followingOrder / 2
+  ・末尾移動(following=null): precedingOrder + INTERVAL_ORDER(1024)
   ・中間移動: (precedingOrder + followingOrder) / 2
 end note
 LDomainService --> LAppService : newOrder (BigDecimal)
 
 LAppService -> LRepo : updateLesson(targetLesson.updateOrder(newOrder))
-LRepo -> DB : UPDATE lessons SET lessonOrder = ? WHERE id = ?
+LRepo -> DB : UPDATE lessons SET lesson_order = ? WHERE id = ?
 DB --> LRepo : 更新されたLesson
 LRepo --> LAppService : Lesson
 
 LAppService --> LController : LessonDto
 LController --> Client : 200 OK { id, lessonOrder（新しい値）, ... }
+
+' ============================================================
+' 全レッスンCSVエクスポート
+' ============================================================
+== 全レッスンCSVエクスポート (GET /api/courses/lessons/export) ==
+note over Client
+  管理者のみ（ADMIN）。全レッスンをコース・グループ情報付きで出力する。
+end note
+
+Client -> CController : GET /api/courses/lessons/export
+
+CController -> LAppService : exportAllLessonsCsv()
+
+LAppService -> LRepo : findAllLessons()
+LRepo -> DB : SELECT lessons JOIN courses JOIN lesson_groups\nORDER BY course_id, lesson_group_order, lesson_order
+DB --> LRepo : 全レッスン（コース・グループ情報付き）
+LRepo --> LAppService : List<LessonWithCourseAndLessonGroup>
+
+LAppService -> LAppService : CSVバイト列生成\n（BOM付きUTF-8・カンマ/ダブルクォートエスケープ）\n0件でもヘッダー行のみ返す
+
+LAppService --> CController : ByteArrayResource (CSVバイト列)
+CController --> Client : 200 OK\nContent-Type: text/csv\nContent-Disposition: attachment; filename=lessons.csv
+
+' ============================================================
+' レッスンCSVインポート（コース内を洗い替え）
+' ============================================================
+== レッスンCSVインポート (POST /api/courses/{courseId}/lessons/import) ==
+note over Client
+  管理者のみ（ADMIN）。対象コースのレッスン構成をCSV内容で洗い替える（単一トランザクション）。
+end note
+
+Client -> CController : POST /api/courses/{courseId}/lessons/import\nmultipart/form-data（file=lessons.csv）
+
+CController -> LAppService : importLessonsCsv(LessonImportCommand)
+
+LAppService -> CourseRepo : findCourseById(courseId)
+CourseRepo -> DB : SELECT FROM courses WHERE id = ?
+DB --> CourseRepo : Optional<Course>
+
+alt コースが存在しない
+  LAppService --> CController : ResourceNotFoundException
+  CController --> Client : 404 Not Found
+else コースが存在する
+  CourseRepo --> LAppService : Course
+
+  LAppService -> LAppService : CSV行をレッスングループタイトル単位に集約
+
+  LAppService -> LRepo : deleteLessonsByCourseId(courseId)
+  LRepo -> DB : DELETE FROM lessons WHERE course_id = ?\n（user_lessons も ON DELETE CASCADE で削除）
+  DB --> LRepo : ok
+  LAppService -> LGRepo : deleteLessonGroupsByCourseId(courseId)
+  LGRepo -> DB : DELETE FROM lesson_groups WHERE course_id = ?
+  DB --> LGRepo : ok
+
+  loop 各レッスングループ（CSV初出順に order 採番）
+    LAppService -> LGRepo : createLessonGroup(...)
+    LGRepo -> DB : INSERT INTO lesson_groups
+    DB --> LGRepo : 生成された LessonGroup
+  end
+  LAppService -> LRepo : createLessons(lessons)（グループ内順に order 採番）
+  LRepo -> DB : INSERT INTO lessons（一括）
+  DB --> LRepo : ok
+
+  LAppService --> CController : LessonImportResponseDto\n{ importedLessonGroupCount, importedLessonCount }
+  CController --> Client : 200 OK { importedLessonGroupCount, importedLessonCount }
+end
 
 @enduml

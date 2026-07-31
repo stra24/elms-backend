@@ -13,7 +13,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** JWTによる認証フィルターに関するクラス。 */
+/** JWTによる認証フィルター。 */
 @Component
 @AllArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {

@@ -19,6 +19,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -46,7 +47,7 @@ public class UserLessonApplicationServiceImplTest {
 
   @Autowired private UserLessonRepository userLessonRepository;
 
-  public Integer createCourse(BigDecimal courseOrder, String title, String description) {
+  public UUID createCourse(BigDecimal courseOrder, String title, String description) {
     jdbcTemplate.update(
         """
             INSERT INTO courses (course_order, title, description, created_at, updated_at)
@@ -57,11 +58,10 @@ public class UserLessonApplicationServiceImplTest {
         description,
         LocalDateTime.now(),
         LocalDateTime.now());
-    return jdbcTemplate.queryForObject(
-        "SELECT id FROM courses WHERE title = ?", Integer.class, title);
+    return jdbcTemplate.queryForObject("SELECT id FROM courses WHERE title = ?", UUID.class, title);
   }
 
-  public Integer createLessonGroup(Integer courseId, BigDecimal lessonGroupOrder, String title) {
+  public UUID createLessonGroup(UUID courseId, BigDecimal lessonGroupOrder, String title) {
     jdbcTemplate.update(
         """
             INSERT INTO lesson_groups (course_id, lesson_group_order, title, created_at, updated_at)
@@ -73,12 +73,12 @@ public class UserLessonApplicationServiceImplTest {
         LocalDateTime.now(),
         LocalDateTime.now());
     return jdbcTemplate.queryForObject(
-        "SELECT id FROM lesson_groups WHERE title = ?", Integer.class, title);
+        "SELECT id FROM lesson_groups WHERE title = ?", UUID.class, title);
   }
 
-  public Integer createLesson(
-      Integer lessonGroupId,
-      Integer courseId,
+  public UUID createLesson(
+      UUID lessonGroupId,
+      UUID courseId,
       BigDecimal lessonOrder,
       String title,
       String content,
@@ -97,11 +97,10 @@ public class UserLessonApplicationServiceImplTest {
         videoUrl,
         LocalDateTime.now(),
         LocalDateTime.now());
-    return jdbcTemplate.queryForObject(
-        "SELECT id FROM lessons WHERE title = ?", Integer.class, title);
+    return jdbcTemplate.queryForObject("SELECT id FROM lessons WHERE title = ?", UUID.class, title);
   }
 
-  public Integer createUser(
+  public UUID createUser(
       String emailAddress, String password, String realName, String userName, String userRole) {
     jdbcTemplate.update(
         """
@@ -117,7 +116,7 @@ public class UserLessonApplicationServiceImplTest {
              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
             """,
         emailAddress,
-        encryptAndCreate(password).getValue(),
+        encryptAndCreate(password).value(),
         realName,
         userName,
         null,
@@ -125,10 +124,10 @@ public class UserLessonApplicationServiceImplTest {
         LocalDateTime.now(),
         LocalDateTime.now());
     return jdbcTemplate.queryForObject(
-        "SELECT id FROM users WHERE email_address = ?", Integer.class, emailAddress);
+        "SELECT id FROM users WHERE email_address = ?", UUID.class, emailAddress);
   }
 
-  public void createUserLesson(Integer userId, Integer lessonId) {
+  public void createUserLesson(UUID userId, UUID lessonId) {
     jdbcTemplate.update(
         """
             INSERT INTO user_lessons (user_id, lesson_id, created_at, updated_at)
@@ -142,9 +141,9 @@ public class UserLessonApplicationServiceImplTest {
 
   @Test
   void 正常系_レッスン詳細取得で未完了の場合isLessonCompletedがfalseになること() {
-    Integer courseId = createCourse(new BigDecimal("1"), "ULテストコース", "コース説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "ULテストグループ");
-    Integer lessonId =
+    UUID courseId = createCourse(new BigDecimal("1"), "ULテストコース", "コース説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "ULテストグループ");
+    UUID lessonId =
         createLesson(
             lessonGroupId,
             courseId,
@@ -152,22 +151,22 @@ public class UserLessonApplicationServiceImplTest {
             "UL未完了レッスン",
             "説明",
             "https://example.com/video.mp4");
-    Integer userId = createUser("ul-not-done@example.com", "p", "太郎", "ulnd", "GENERAL");
+    UUID userId = createUser("ul-not-done@example.com", "p", "太郎", "ulnd", "GENERAL");
 
     UserLessonDetailDto result =
         userLessonApplicationService.findUserLessonDetail(
             userId, courseId, lessonGroupId, lessonId);
 
     assertNotNull(result);
-    assertEquals(lessonId, result.getId());
-    assertFalse(result.isLessonCompleted());
+    assertEquals(lessonId, result.id());
+    assertFalse(result.lessonCompleted());
   }
 
   @Test
   void 正常系_レッスン詳細取得で受講完了済みの場合isLessonCompletedがtrueになること() {
-    Integer courseId = createCourse(new BigDecimal("1"), "UL完了コース", "コース説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL完了グループ");
-    Integer lessonId =
+    UUID courseId = createCourse(new BigDecimal("1"), "UL完了コース", "コース説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL完了グループ");
+    UUID lessonId =
         createLesson(
             lessonGroupId,
             courseId,
@@ -175,7 +174,7 @@ public class UserLessonApplicationServiceImplTest {
             "UL完了レッスン",
             "説明",
             "https://example.com/video.mp4");
-    Integer userId = createUser("ul-done@example.com", "p", "次郎", "uld", "GENERAL");
+    UUID userId = createUser("ul-done@example.com", "p", "次郎", "uld", "GENERAL");
     createUserLesson(userId, lessonId);
 
     UserLessonDetailDto result =
@@ -183,17 +182,17 @@ public class UserLessonApplicationServiceImplTest {
             userId, courseId, lessonGroupId, lessonId);
 
     assertNotNull(result);
-    assertEquals(lessonId, result.getId());
-    assertTrue(result.isLessonCompleted());
+    assertEquals(lessonId, result.id());
+    assertTrue(result.lessonCompleted());
   }
 
   @Test
   void 異常系_パスのコースまたはグループがレッスンと一致しない場合詳細取得で例外になること() {
-    Integer courseId = createCourse(new BigDecimal("1"), "UL整合コース", "説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL整合グループ");
-    Integer lessonId = createLesson(lessonGroupId, courseId, new BigDecimal("1"), "UL1", "d", null);
-    Integer userId = createUser("ul-mismatch@example.com", "p", "三郎", "ulm", "GENERAL");
-    Integer otherCourseId = createCourse(new BigDecimal("2"), "UL別コース", "説明");
+    UUID courseId = createCourse(new BigDecimal("1"), "UL整合コース", "説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL整合グループ");
+    UUID lessonId = createLesson(lessonGroupId, courseId, new BigDecimal("1"), "UL1", "d", null);
+    UUID userId = createUser("ul-mismatch@example.com", "p", "三郎", "ulm", "GENERAL");
+    UUID otherCourseId = createCourse(new BigDecimal("2"), "UL別コース", "説明");
 
     assertThrows(
         ResourceNotFoundException.class,
@@ -204,9 +203,9 @@ public class UserLessonApplicationServiceImplTest {
 
   @Test
   void 正常系_isLessonCompletedがtrueでレコードが存在するときuserLessonが更新されること() {
-    Integer courseId = createCourse(new BigDecimal("1"), "UL更新コース", "コース説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL更新グループ");
-    Integer lessonId =
+    UUID courseId = createCourse(new BigDecimal("1"), "UL更新コース", "コース説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL更新グループ");
+    UUID lessonId =
         createLesson(
             lessonGroupId,
             courseId,
@@ -214,7 +213,7 @@ public class UserLessonApplicationServiceImplTest {
             "UL更新レッスン",
             "説明",
             "https://example.com/video.mp4");
-    Integer userId = createUser("ul-upd@example.com", "password", "テスト 太郎", "ulupd", "GENERAL");
+    UUID userId = createUser("ul-upd@example.com", "password", "テスト 太郎", "ulupd", "GENERAL");
     createUserLesson(userId, lessonId);
 
     Timestamp beforeUpdatedAt =
@@ -224,13 +223,12 @@ public class UserLessonApplicationServiceImplTest {
             userId,
             lessonId);
 
-    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest();
-    req.setLessonCompleted(true);
+    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest(true);
     UserLessonCompletionStatusUpdateCommand cmd = req.toCommand(userId, lessonId);
     userLessonApplicationService.updateUserLesson(courseId, lessonGroupId, cmd);
 
     Optional<UserLesson> userLessonOpt =
-        userLessonRepository.findByUserIdAndLessonId(cmd.getUserId(), cmd.getLessonId());
+        userLessonRepository.findByUserIdAndLessonId(cmd.userId(), cmd.lessonId());
     assertTrue(userLessonOpt.isPresent());
 
     Timestamp afterUpdatedAt =
@@ -246,9 +244,9 @@ public class UserLessonApplicationServiceImplTest {
 
   @Test
   void 正常系_isLessonCompletedがtrueでレコードが存在しないときuserLessonが新規作成されること() {
-    Integer courseId = createCourse(new BigDecimal("1"), "UL新規コース", "コース説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL新規グループ");
-    Integer lessonId =
+    UUID courseId = createCourse(new BigDecimal("1"), "UL新規コース", "コース説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL新規グループ");
+    UUID lessonId =
         createLesson(
             lessonGroupId,
             courseId,
@@ -256,10 +254,9 @@ public class UserLessonApplicationServiceImplTest {
             "UL新規レッスン",
             "説明",
             "https://example.com/video.mp4");
-    Integer userId = createUser("ul-new@example.com", "password", "テスト 太郎", "ulnew", "GENERAL");
+    UUID userId = createUser("ul-new@example.com", "password", "テスト 太郎", "ulnew", "GENERAL");
 
-    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest();
-    req.setLessonCompleted(true);
+    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest(true);
     UserLessonCompletionStatusUpdateCommand cmd = req.toCommand(userId, lessonId);
     assertFalse(userLessonRepository.findByUserIdAndLessonId(userId, lessonId).isPresent());
 
@@ -270,9 +267,9 @@ public class UserLessonApplicationServiceImplTest {
 
   @Test
   void 正常系_isLessonCompletedがfalseの時userLessonが削除されること() {
-    Integer courseId = createCourse(new BigDecimal("1"), "UL削除コース", "コース説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL削除グループ");
-    Integer lessonId =
+    UUID courseId = createCourse(new BigDecimal("1"), "UL削除コース", "コース説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "UL削除グループ");
+    UUID lessonId =
         createLesson(
             lessonGroupId,
             courseId,
@@ -280,11 +277,11 @@ public class UserLessonApplicationServiceImplTest {
             "UL削除レッスン",
             "説明",
             "https://example.com/video.mp4");
-    Integer userId = createUser("ul-del@example.com", "password", "テスト 太郎", "uldel", "GENERAL");
+    UUID userId = createUser("ul-del@example.com", "password", "テスト 太郎", "uldel", "GENERAL");
     createUserLesson(userId, lessonId);
 
-    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest();
-    req.setLessonCompleted(false);
+    UserLessonCompletionStatusUpdateRequest req =
+        new UserLessonCompletionStatusUpdateRequest(false);
     UserLessonCompletionStatusUpdateCommand cmd = req.toCommand(userId, lessonId);
     userLessonApplicationService.updateUserLesson(courseId, lessonGroupId, cmd);
 
@@ -293,9 +290,9 @@ public class UserLessonApplicationServiceImplTest {
 
   @Test
   void 異常系_Userに存在しないuserIdで受講状態を変更するとエラーになること() {
-    Integer courseId = createCourse(new BigDecimal("1"), "ULユーザ無コース", "コース説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "ULユーザ無グループ");
-    Integer lessonId =
+    UUID courseId = createCourse(new BigDecimal("1"), "ULユーザ無コース", "コース説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "ULユーザ無グループ");
+    UUID lessonId =
         createLesson(
             lessonGroupId,
             courseId,
@@ -304,9 +301,8 @@ public class UserLessonApplicationServiceImplTest {
             "説明",
             "https://example.com/video.mp4");
 
-    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest();
-    req.setLessonCompleted(true);
-    UserLessonCompletionStatusUpdateCommand cmd = req.toCommand(-999, lessonId);
+    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest(true);
+    UserLessonCompletionStatusUpdateCommand cmd = req.toCommand(UUID.randomUUID(), lessonId);
 
     assertThrows(
         ResourceNotFoundException.class,
@@ -315,13 +311,12 @@ public class UserLessonApplicationServiceImplTest {
 
   @Test
   void 異常系_Lessonに存在しないlessonIdで受講状態を変更するとエラーになること() {
-    Integer courseId = createCourse(new BigDecimal("1"), "ULレッスン無コース", "コース説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "ULレッスン無グループ");
-    Integer userId = createUser("ul-no-lesson@example.com", "p", "テスト", "uln", "GENERAL");
+    UUID courseId = createCourse(new BigDecimal("1"), "ULレッスン無コース", "コース説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "ULレッスン無グループ");
+    UUID userId = createUser("ul-no-lesson@example.com", "p", "テスト", "uln", "GENERAL");
 
-    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest();
-    req.setLessonCompleted(true);
-    UserLessonCompletionStatusUpdateCommand cmd = req.toCommand(userId, -999);
+    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest(true);
+    UserLessonCompletionStatusUpdateCommand cmd = req.toCommand(userId, UUID.randomUUID());
 
     assertThrows(
         ResourceNotFoundException.class,
@@ -330,15 +325,13 @@ public class UserLessonApplicationServiceImplTest {
 
   @Test
   void 異常系_パスのコースがレッスンと一致しない場合受講状態更新で例外になること() {
-    Integer courseId = createCourse(new BigDecimal("1"), "ULPUT整合コース", "説明");
-    Integer lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "ULPUT整合グループ");
-    Integer lessonId =
-        createLesson(lessonGroupId, courseId, new BigDecimal("1"), "ULPUT1", "d", null);
-    Integer userId = createUser("ul-put-mismatch@example.com", "p", "四郎", "ulpm", "GENERAL");
-    Integer otherCourseId = createCourse(new BigDecimal("2"), "ULPUT別コース", "説明");
+    UUID courseId = createCourse(new BigDecimal("1"), "ULPUT整合コース", "説明");
+    UUID lessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "ULPUT整合グループ");
+    UUID lessonId = createLesson(lessonGroupId, courseId, new BigDecimal("1"), "ULPUT1", "d", null);
+    UUID userId = createUser("ul-put-mismatch@example.com", "p", "四郎", "ulpm", "GENERAL");
+    UUID otherCourseId = createCourse(new BigDecimal("2"), "ULPUT別コース", "説明");
 
-    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest();
-    req.setLessonCompleted(true);
+    UserLessonCompletionStatusUpdateRequest req = new UserLessonCompletionStatusUpdateRequest(true);
     UserLessonCompletionStatusUpdateCommand cmd = req.toCommand(userId, lessonId);
 
     assertThrows(
@@ -349,12 +342,12 @@ public class UserLessonApplicationServiceImplTest {
   @Test
   void 正常系_該当ユーザーに紐づく該当コースのレッスン一覧を取得できること() {
     // Arrange
-    Integer courseId1 = createCourse(new BigDecimal("1"), "はじめ", "コース１");
-    Integer courseId2 = createCourse(new BigDecimal("2"), "つぎに", "コース２");
-    Integer lessonGroupId1 = createLessonGroup(courseId1, new BigDecimal("1"), "コース１のレッスングループ1");
-    Integer lessonGroupId2 = createLessonGroup(courseId1, new BigDecimal("2"), "コース１のレッスングループ2");
-    Integer lessonGroupId3 = createLessonGroup(courseId2, new BigDecimal("1"), "コース2のレッスングループ1");
-    Integer lessonId1 =
+    UUID courseId1 = createCourse(new BigDecimal("1"), "はじめ", "コース１");
+    UUID courseId2 = createCourse(new BigDecimal("2"), "つぎに", "コース２");
+    UUID lessonGroupId1 = createLessonGroup(courseId1, new BigDecimal("1"), "コース１のレッスングループ1");
+    UUID lessonGroupId2 = createLessonGroup(courseId1, new BigDecimal("2"), "コース１のレッスングループ2");
+    UUID lessonGroupId3 = createLessonGroup(courseId2, new BigDecimal("1"), "コース2のレッスングループ1");
+    UUID lessonId1 =
         createLesson(
             lessonGroupId1,
             courseId1,
@@ -362,7 +355,7 @@ public class UserLessonApplicationServiceImplTest {
             "UL更新レッスン",
             "コース１のレッスングループ１のレッスン1",
             "https://example.com/video.mp4");
-    Integer lessonId2 =
+    UUID lessonId2 =
         createLesson(
             lessonGroupId1,
             courseId1,
@@ -370,7 +363,7 @@ public class UserLessonApplicationServiceImplTest {
             "UI更新レッスン",
             "コース１のレッスングループ１のレッスン2",
             "https://example.com/video.mp4");
-    Integer lessonId3 =
+    UUID lessonId3 =
         createLesson(
             lessonGroupId2,
             courseId1,
@@ -378,7 +371,7 @@ public class UserLessonApplicationServiceImplTest {
             "Javaレッスン",
             "コース１のレッスングループ2のレッスン1",
             "https://example.com/video.mp4");
-    Integer lessonId4 =
+    UUID lessonId4 =
         createLesson(
             lessonGroupId3,
             courseId2,
@@ -386,7 +379,7 @@ public class UserLessonApplicationServiceImplTest {
             "SQLレッスン",
             "コース2のレッスングループ1のレッスン1",
             "https://example.com/video.mp4");
-    Integer userId = createUser("ul-upd@example.com", "password", "テスト 太郎", "ulupd", "GENERAL");
+    UUID userId = createUser("ul-upd@example.com", "password", "テスト 太郎", "ulupd", "GENERAL");
     createUserLesson(userId, lessonId1);
     createUserLesson(userId, lessonId3);
     createUserLesson(userId, lessonId4);
@@ -406,35 +399,64 @@ public class UserLessonApplicationServiceImplTest {
     assertFalse(
         userLessonGroupDto.stream()
             .flatMap(g -> g.userLessons().stream())
-            .anyMatch(l -> l.lesson().getId().equals(lessonId4)));
+            .anyMatch(l -> l.lesson().id().equals(lessonId4)));
     // レッスングループ順になっていること
     assertEquals(lessonGroupId1, userLessonGroupDto.getFirst().id());
     assertEquals(lessonGroupId2, userLessonGroupDto.get(1).id());
     // レッスン順番になっていること
-    assertEquals(lessonId1, userLessonGroupDto.getFirst().userLessons().get(0).lesson().getId());
-    assertEquals(lessonId2, userLessonGroupDto.getFirst().userLessons().get(1).lesson().getId());
+    assertEquals(lessonId1, userLessonGroupDto.getFirst().userLessons().get(0).lesson().id());
+    assertEquals(lessonId2, userLessonGroupDto.getFirst().userLessons().get(1).lesson().id());
     // 別コースは混ざらないこと
     assertEquals(2, userLessonGroupDto.size());
     assertEquals(lessonGroupId3, userLessonGroupDto2.getFirst().id());
   }
 
   @Test
+  void 正常系_レッスンが空のレッスングループでも一覧取得できること() {
+    // Arrange
+    UUID courseId = createCourse(new BigDecimal("1"), "空グループコース", "説明");
+    UUID emptyLessonGroupId = createLessonGroup(courseId, new BigDecimal("1"), "レッスンなしグループ");
+    UUID lessonGroupIdWithLesson = createLessonGroup(courseId, new BigDecimal("2"), "レッスンありグループ");
+    UUID lessonId =
+        createLesson(
+            lessonGroupIdWithLesson,
+            courseId,
+            new BigDecimal("1000"),
+            "存在するレッスン",
+            "本文",
+            "https://example.com/video.mp4");
+    UUID userId = createUser("ul-empty@example.com", "password", "テスト 太郎", "ulempty", "GENERAL");
+
+    // Act
+    List<UserLessonGroupDto> result =
+        userLessonApplicationService.findUserLessons(userId, courseId);
+
+    // Assert
+    assertEquals(2, result.size());
+    assertEquals(emptyLessonGroupId, result.getFirst().id());
+    assertTrue(result.getFirst().userLessons().isEmpty());
+    assertEquals(lessonGroupIdWithLesson, result.get(1).id());
+    assertEquals(1, result.get(1).userLessons().size());
+    assertEquals(lessonId, result.get(1).userLessons().getFirst().lesson().id());
+  }
+
+  @Test
   void 異常系_ユーザーが存在しないとき例外になること() {
     // Arrange
-    Integer courseId = createCourse(new BigDecimal("1"), "はじめ", "コース１");
+    UUID courseId = createCourse(new BigDecimal("1"), "はじめ", "コース１");
     // Act & Assert
     assertThrows(
         ResourceNotFoundException.class,
-        () -> userLessonApplicationService.findUserLessons(999, courseId));
+        () -> userLessonApplicationService.findUserLessons(UUID.randomUUID(), courseId));
   }
 
   @Test
   void 異常系_コースが存在しないとき例外になること() {
     // Arrange
-    Integer userId = createUser("ul-upd@example.com", "password", "テスト 太郎", "ulupd", "GENERAL");
+    UUID userId = createUser("ul-upd@example.com", "password", "テスト 太郎", "ulupd", "GENERAL");
     // Act & Assert
     assertThrows(
         ResourceNotFoundException.class,
-        () -> userLessonApplicationService.findUserLessons(userId, 999));
+        () -> userLessonApplicationService.findUserLessons(userId, UUID.randomUUID()));
   }
 }

@@ -14,7 +14,7 @@ import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Swagger/OpenAPI設定に関するクラス。 */
+/** Swagger/OpenAPI設定。 */
 @Configuration
 public class SwaggerConfig {
 

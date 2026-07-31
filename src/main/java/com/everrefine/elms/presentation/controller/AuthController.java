@@ -77,7 +77,7 @@ public class AuthController {
       Authentication authentication =
           authenticationManager.authenticate(
               new UsernamePasswordAuthenticationToken(
-                  loginRequest.getEmailAddress(), loginRequest.getPassword()));
+                  loginRequest.emailAddress(), loginRequest.password()));
 
       // ログイン履歴を保存する。
       LoginHistoryCreateCommand loginHistoryCreateCommand =
@@ -88,12 +88,12 @@ public class AuthController {
       String jwtToken = jwtApplicationService.generateJwtToken(authentication.getName());
       String refreshToken =
           jwtApplicationService.generateRefreshToken(
-              authentication.getName(), loginRequest.isRememberMe());
+              authentication.getName(), loginRequest.rememberMe());
 
       // JWTとリフレッシュトークンをクッキーに設定する。
       jwtApplicationService.setJwtTokenToResponseCookie(response, jwtToken);
       jwtApplicationService.setRefreshTokenToResponseCookie(
-          response, refreshToken, loginRequest.isRememberMe());
+          response, refreshToken, loginRequest.rememberMe());
 
       // ログイン成功
       return ResponseEntity.ok().build();

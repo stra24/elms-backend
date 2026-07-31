@@ -1,16 +1,9 @@
 package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.domain.model.user.User;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 /** パスワード更新用のコマンド。 */
-@Getter
-@AllArgsConstructor
-public class PasswordUpdateCommand {
-
-  private String currentPassword;
-  private String newPassword;
+public record PasswordUpdateCommand(String currentPassword, String newPassword) {
 
   /**
    * Userエンティティに変換する。

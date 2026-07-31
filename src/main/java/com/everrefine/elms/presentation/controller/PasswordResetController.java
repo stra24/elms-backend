@@ -72,7 +72,7 @@ public class PasswordResetController {
 
       Authentication authentication =
           authenticationManager.authenticate(
-              new UsernamePasswordAuthenticationToken(emailAddress, request.getNewPassword()));
+              new UsernamePasswordAuthenticationToken(emailAddress, request.newPassword()));
 
       String jwtToken = jwtApplicationService.generateJwtToken(authentication.getName());
       // パスワードリセット後の自動ログインはrememberMe=false（セッションCookie）とする

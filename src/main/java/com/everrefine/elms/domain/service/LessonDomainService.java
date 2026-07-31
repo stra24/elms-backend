@@ -1,17 +1,18 @@
 package com.everrefine.elms.domain.service;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /** レッスンに関するドメインサービスインターフェース。 */
 public interface LessonDomainService {
 
   /**
-   * レッスンの並び順を発番する。 指定されたレッスングループ内で最大のlesson_order + 1を返す。 レッスンが存在しない場合は1を返す。
+   * レッスンの並び順を発番する。 指定されたレッスングループ内で最大のlesson_order + 1024を返す。 レッスンが存在しない場合は1024を返す。
    *
    * @param lessonGroupId レッスングループID
    * @return 発番されたレッスンの並び順
    */
-  BigDecimal issueLessonOrder(Integer lessonGroupId);
+  BigDecimal issueLessonOrder(UUID lessonGroupId);
 
   /**
    * 新しいレッスンの並び順を計算する。 前後のレッスンの並び順から中間値を計算する。

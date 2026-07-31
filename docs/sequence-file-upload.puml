@@ -17,7 +17,7 @@ participant "FileStorageApplicationService" as AppService
 participant "FileStorage\n(S3 / ローカル)" as Storage
 
 note over Client
-  全APIはJWT認証済みであることが前提（JwtFilterは省略）。
+  全APIはJWT認証済みであることが前提（認証・JWT検証の詳細は「認証」シーケンス図を参照）。
   コース・ユーザーのサムネイル画像のアップロードに使用する。
 end note
 

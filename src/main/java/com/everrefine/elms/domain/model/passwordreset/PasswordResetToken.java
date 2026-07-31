@@ -2,29 +2,13 @@ package com.everrefine.elms.domain.model.passwordreset;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.lang.Nullable;
 
-@Getter
-@AllArgsConstructor
-@Table("password_reset_tokens")
-/** パスワードリセットトークンのエンティティ。 */
-public class PasswordResetToken {
+/** パスワードリセットトークンのドメインモデル。 */
+public record PasswordResetToken(
+    UUID id, UUID userId, String token, LocalDateTime expiresAt, @Nullable LocalDateTime usedAt) {
 
   private static final int EXPIRY_MINUTES = 30;
-
-  @Id private final Integer id;
-
-  private final Integer userId;
-
-  private final String token;
-
-  private final LocalDateTime expiresAt;
-
-  @Nullable private final LocalDateTime usedAt;
 
   /**
    * 新規のパスワードリセットトークンを作成する。有効期限は30分。
@@ -32,7 +16,7 @@ public class PasswordResetToken {
    * @param userId ユーザーID
    * @return 新規作成されたパスワードリセットトークン
    */
-  public static PasswordResetToken create(Integer userId) {
+  public static PasswordResetToken create(UUID userId) {
     return new PasswordResetToken(
         null,
         userId,

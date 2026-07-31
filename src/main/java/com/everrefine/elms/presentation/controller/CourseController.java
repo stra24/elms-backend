@@ -2,9 +2,12 @@ package com.everrefine.elms.presentation.controller;
 
 import com.everrefine.elms.application.command.CourseCreateCommand;
 import com.everrefine.elms.application.command.CourseUpdateCommand;
+import com.everrefine.elms.application.command.LessonImportCommand;
 import com.everrefine.elms.application.dto.CourseDto;
 import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.CoursePageDto;
+import com.everrefine.elms.application.dto.LessonImportResponseDto;
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.service.CourseApplicationService;
 import com.everrefine.elms.application.service.LessonApplicationService;
 import com.everrefine.elms.presentation.request.CourseCreateRequest;
@@ -14,7 +17,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import java.io.IOException;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /** コースに関するコントローラー。 */
 @Tag(name = "コース")
@@ -77,7 +84,7 @@ public class CourseController {
     @ApiResponse(responseCode = "404", description = "コースが見つかりません")
   })
   @GetMapping("/{courseId}")
-  public CourseDto findCourseById(@PathVariable @Positive Integer courseId) {
+  public CourseDto findCourseById(@PathVariable UUID courseId) {
     return courseApplicationService.findCourseById(courseId);
   }
 
@@ -95,8 +102,7 @@ public class CourseController {
     @ApiResponse(responseCode = "404", description = "コースが見つかりません")
   })
   @GetMapping("/{courseId}/lessons")
-  public CourseLessonsDto findLessonsGroupedByLessonGroup(
-      @PathVariable @Positive Integer courseId) {
+  public CourseLessonsDto findLessonsGroupedByLessonGroup(@PathVariable UUID courseId) {
     return lessonApplicationService.findLessonsGroupedByLessonGroup(courseId);
   }
 
@@ -119,6 +125,39 @@ public class CourseController {
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=lessons.csv")
         .contentType(MediaType.parseMediaType("text/csv"))
         .body(lessonsCsv);
+  }
+
+  /**
+   * CSVファイルをアップロードして指定コースのレッスン構成を一括更新する。
+   *
+   * @param courseId 取り込み対象コースID
+   * @param file アップロード対象のCSVファイル
+   * @return 取り込んだレッスングループ件数とレッスン件数
+   */
+  @Operation(summary = "レッスンCSV取込", description = "CSVファイルをアップロードして指定コースのレッスン構成を一括更新します")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "取込成功"),
+    @ApiResponse(responseCode = "400", description = "バリデーションエラー"),
+    @ApiResponse(responseCode = "401", description = "認証されていません"),
+    @ApiResponse(responseCode = "403", description = "管理者権限が必要です"),
+    @ApiResponse(responseCode = "404", description = "コースが見つかりません")
+  })
+  @PreAuthorize("hasAuthority('ADMIN')")
+  @PostMapping(value = "/{courseId}/lessons/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<LessonImportResponseDto> importLessonsCsv(
+      @PathVariable UUID courseId, @RequestParam("file") @NotNull MultipartFile file) {
+    LessonImportCommand lessonImportCommand = toLessonImportCommand(courseId, file);
+    LessonImportResponseDto response =
+        lessonApplicationService.importLessonsCsv(lessonImportCommand);
+    return ResponseEntity.ok(response);
+  }
+
+  private LessonImportCommand toLessonImportCommand(UUID courseId, MultipartFile file) {
+    try {
+      return LessonImportCommand.from(courseId, file.getOriginalFilename(), file.getBytes());
+    } catch (IOException e) {
+      throw new BadRequestException("CSVファイルの読み込みに失敗しました", e);
+    }
   }
 
   /**
@@ -157,8 +196,7 @@ public class CourseController {
   @PreAuthorize("hasAuthority('ADMIN')")
   @PutMapping("/{courseId}")
   public void updateCourse(
-      @PathVariable @Positive Integer courseId,
-      @RequestBody @Valid CourseUpdateRequest courseUpdateRequest) {
+      @PathVariable UUID courseId, @RequestBody @Valid CourseUpdateRequest courseUpdateRequest) {
     CourseUpdateCommand courseUpdateCommand = courseUpdateRequest.toCommand(courseId);
     courseApplicationService.updateCourse(courseUpdateCommand);
   }
@@ -179,7 +217,7 @@ public class CourseController {
   @PreAuthorize("hasAuthority('ADMIN')")
   @DeleteMapping("/{courseId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void deleteCourseById(@PathVariable @Positive Integer courseId) {
+  public void deleteCourseById(@PathVariable UUID courseId) {
     courseApplicationService.deleteCourseById(courseId);
   }
 }

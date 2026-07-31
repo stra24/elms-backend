@@ -18,7 +18,7 @@ participant "NewsRepository" as Repo
 database "DB" as DB
 
 note over Client
-  全APIはJWT認証済みであることが前提（JwtFilterは省略）
+  全APIはJWT認証済みであることが前提（認証・JWT検証の詳細は「認証」シーケンス図を参照）
 end note
 
 ' ============================================================
@@ -30,18 +30,23 @@ Client -> Controller : GET /api/news\n?pageNum=1&pageSize=10&...（検索条件�
 
 Controller -> AppService : findNews(NewsSearchCommand)
 
-AppService -> Repo : findNews(newsSearchCondition)
-Repo -> DB : SELECT * FROM news ORDER BY createdAt DESC LIMIT ? OFFSET ?
+AppService -> Repo : findNewsIdsBySearchConditions(NewsSearchCondition)
+Repo -> DB : SELECT id（条件絞り込み・ページング）ORDER BY created_at DESC
+DB --> Repo : newsIdのリスト
+Repo --> AppService : List<UUID>
+
+AppService -> Repo : findNewsByIds(newsIds)
+Repo -> DB : SELECT * FROM news WHERE id IN (...)
 DB --> Repo : List<News>
 Repo --> AppService : List<News>
 
-AppService -> Repo : countNews(newsSearchCondition)
+AppService -> Repo : countNews(NewsSearchCondition)
 Repo -> DB : SELECT COUNT(*)
 DB --> Repo : totalSize (int)
 Repo --> AppService : int
 
 AppService --> Controller : NewsPageDto
-Controller --> Client : 200 OK { news[], totalSize, pageNum, pageSize }
+Controller --> Client : 200 OK { newsDtos[], totalSize, pageNum, pageSize }
 
 ' ============================================================
 ' お知らせ詳細取得

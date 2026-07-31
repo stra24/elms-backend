@@ -13,11 +13,12 @@ import com.everrefine.elms.domain.repository.UserLessonRepository;
 import com.everrefine.elms.domain.repository.UserRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** ユーザーコースアプリケーションサービスの実装に関するクラス。 */
+/** ユーザーコースアプリケーションサービスの実装。 */
 @Service
 @AllArgsConstructor
 public class UserCourseApplicationServiceImpl implements UserCourseApplicationService {
@@ -37,7 +38,7 @@ public class UserCourseApplicationServiceImpl implements UserCourseApplicationSe
    */
   @Override
   @Transactional(readOnly = true)
-  public List<UserCourseDto> findUserCourses(Integer userId) {
+  public List<UserCourseDto> findUserCourses(UUID userId) {
     // ユーザーがいるかの判定
     userRepository
         .findUserById(userId)
@@ -57,10 +58,10 @@ public class UserCourseApplicationServiceImpl implements UserCourseApplicationSe
               int allLessonsCnt =
                   lessonRepository.countLessons(
                       new LessonSearchCriteria(
-                          1, 1, String.valueOf(course.getId()), null, null, null, null));
+                          1, 1, String.valueOf(course.id()), null, null, null, null));
               int completedLessonCnt =
                   userLessonRepository.countCompletedLessonsByUserIdAndCourseId(
-                      userId, course.getId());
+                      userId, course.id());
               BigDecimal progress =
                   ProgressRate.of(completedLessonCnt, allLessonsCnt).toBigDecimal();
               return UserCourseDto.from(course, progress);

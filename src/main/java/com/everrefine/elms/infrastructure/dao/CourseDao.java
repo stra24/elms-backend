@@ -1,8 +1,9 @@
 package com.everrefine.elms.infrastructure.dao;
 
-import com.everrefine.elms.domain.model.course.Course;
+import com.everrefine.elms.infrastructure.entity.course.CourseEntity;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Repository;
 
 /** コースのDAOインターフェース。 */
 @Repository
-public interface CourseDao extends CrudRepository<Course, Integer> {
+public interface CourseDao extends CrudRepository<CourseEntity, UUID> {
 
   @Query(
       """
@@ -20,7 +21,7 @@ public interface CourseDao extends CrudRepository<Course, Integer> {
             LIMIT :pageSize
             OFFSET :offset
           """)
-  List<Course> findCoursesWithPagination(
+  List<CourseEntity> findCoursesWithPagination(
       @Param("pageSize") int pageSize, @Param("offset") int offset);
 
   @Query(
@@ -30,7 +31,7 @@ public interface CourseDao extends CrudRepository<Course, Integer> {
       """)
   int countAllCourses();
 
-  Optional<Course> findTop1ByOrderByCourseOrderDesc();
+  Optional<CourseEntity> findTop1ByOrderByCourseOrderDesc();
 
   @Query(
       """

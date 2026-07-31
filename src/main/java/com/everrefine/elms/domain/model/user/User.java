@@ -1,44 +1,21 @@
 package com.everrefine.elms.domain.model.user;
 
-import com.everrefine.elms.domain.model.Url;
+import com.everrefine.elms.domain.model.ThumbnailUrl;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
+import java.util.UUID;
 import org.springframework.lang.Nullable;
 
-/** ユーザーのエンティティ。 */
-@Getter
-@AllArgsConstructor
-@Table("users")
-public class User {
-
-  @Id private final Integer id;
-
-  @Column("email_address")
-  private EmailAddress emailAddress;
-
-  private Password password;
-
-  @Column("real_name")
-  private RealName realName;
-
-  @Column("user_name")
-  private UserName userName;
-
-  @Nullable @Column("thumbnail_url")
-  private Url thumbnailUrl;
-
-  @Column("user_role")
-  private UserRole userRole;
-
-  @Column("created_at")
-  private LocalDateTime createdAt;
-
-  @Column("updated_at")
-  private LocalDateTime updatedAt;
+/** ユーザーのドメインモデル。 */
+public record User(
+    UUID id,
+    EmailAddress emailAddress,
+    Password password,
+    RealName realName,
+    UserName userName,
+    @Nullable ThumbnailUrl thumbnailUrl,
+    UserRole userRole,
+    LocalDateTime createdAt,
+    LocalDateTime updatedAt) {
 
   /**
    * 新規作成用のユーザーを作成する。
@@ -65,7 +42,7 @@ public class User {
         Password.encryptAndCreate(password),
         new RealName(realName),
         new UserName(userName),
-        thumbnailUrl == null ? null : new Url(thumbnailUrl),
+        thumbnailUrl == null ? null : new ThumbnailUrl(thumbnailUrl),
         userRole,
         now,
         now);
@@ -95,7 +72,7 @@ public class User {
         password == null ? this.password : Password.encryptAndCreate(password),
         realName == null ? this.realName : new RealName(realName),
         userName == null ? this.userName : new UserName(userName),
-        thumbnailUrl == null ? this.thumbnailUrl : new Url(thumbnailUrl),
+        thumbnailUrl == null ? this.thumbnailUrl : new ThumbnailUrl(thumbnailUrl),
         userRole == null ? this.userRole : userRole,
         this.createdAt,
         LocalDateTime.now());

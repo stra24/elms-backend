@@ -13,7 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -55,9 +55,7 @@ public class LessonController {
   @PreAuthorize("hasAuthority('ADMIN')")
   @GetMapping("/{lessonId}")
   public LessonDto findLessonById(
-      @PathVariable @Positive Integer courseId,
-      @PathVariable @Positive Integer lessonGroupId,
-      @PathVariable @Positive Integer lessonId) {
+      @PathVariable UUID courseId, @PathVariable UUID lessonGroupId, @PathVariable UUID lessonId) {
     return lessonApplicationService.findLessonById(courseId, lessonGroupId, lessonId);
   }
 
@@ -80,8 +78,8 @@ public class LessonController {
   @PreAuthorize("hasAuthority('ADMIN')")
   @PostMapping
   public LessonDto createLesson(
-      @PathVariable @Positive Integer courseId,
-      @PathVariable @Positive Integer lessonGroupId,
+      @PathVariable UUID courseId,
+      @PathVariable UUID lessonGroupId,
       @RequestBody @Valid LessonCreateRequest lessonCreateRequest) {
     LessonCreateCommand lessonCreateCommand =
         lessonCreateRequest.toCommand(courseId, lessonGroupId);
@@ -108,9 +106,9 @@ public class LessonController {
   @PreAuthorize("hasAuthority('ADMIN')")
   @PutMapping("/{lessonId}")
   public LessonDto updateLesson(
-      @PathVariable @Positive Integer courseId,
-      @PathVariable @Positive Integer lessonGroupId,
-      @PathVariable @Positive Integer lessonId,
+      @PathVariable UUID courseId,
+      @PathVariable UUID lessonGroupId,
+      @PathVariable UUID lessonId,
       @RequestBody @Valid LessonUpdateRequest lessonUpdateRequest) {
     LessonUpdateCommand lessonUpdateCommand = lessonUpdateRequest.toCommand(lessonId);
     return lessonApplicationService.updateLesson(lessonUpdateCommand);
@@ -136,9 +134,9 @@ public class LessonController {
   @PreAuthorize("hasAuthority('ADMIN')")
   @PutMapping("/{lessonId}/order")
   public LessonDto updateLessonOrder(
-      @PathVariable @Positive Integer courseId,
-      @PathVariable @Positive Integer lessonGroupId,
-      @PathVariable @Positive Integer lessonId,
+      @PathVariable UUID courseId,
+      @PathVariable UUID lessonGroupId,
+      @PathVariable UUID lessonId,
       @RequestBody @Valid LessonOrderUpdateRequest lessonOrderUpdateRequest) {
     LessonOrderUpdateCommand lessonOrderUpdateCommand =
         lessonOrderUpdateRequest.toCommand(lessonId);
@@ -164,9 +162,7 @@ public class LessonController {
   @DeleteMapping("/{lessonId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void deleteLessonById(
-      @PathVariable @Positive Integer courseId,
-      @PathVariable @Positive Integer lessonGroupId,
-      @PathVariable @Positive Integer lessonId) {
+      @PathVariable UUID courseId, @PathVariable UUID lessonGroupId, @PathVariable UUID lessonId) {
     lessonApplicationService.deleteLessonById(lessonId);
   }
 }

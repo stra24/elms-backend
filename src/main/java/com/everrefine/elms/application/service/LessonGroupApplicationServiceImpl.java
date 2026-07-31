@@ -11,11 +11,12 @@ import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.domain.service.LessonGroupDomainService;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** レッスングループアプリケーションサービスの実装に関するクラス。 */
+/** レッスングループアプリケーションサービスの実装。 */
 @Service
 @AllArgsConstructor
 public class LessonGroupApplicationServiceImpl implements LessonGroupApplicationService {
@@ -28,7 +29,7 @@ public class LessonGroupApplicationServiceImpl implements LessonGroupApplication
   @Transactional
   public LessonGroupDto createLessonGroup(LessonGroupCreateCommand lessonGroupCreateCommand) {
     BigDecimal lessonGroupOrder =
-        lessonGroupDomainService.issueLessonGroupOrder(lessonGroupCreateCommand.getCourseId());
+        lessonGroupDomainService.issueLessonGroupOrder(lessonGroupCreateCommand.courseId());
     LessonGroup createdLessonGroup =
         lessonGroupRepository.createLessonGroup(
             lessonGroupCreateCommand.toLessonGroup(lessonGroupOrder));
@@ -40,17 +41,17 @@ public class LessonGroupApplicationServiceImpl implements LessonGroupApplication
   public LessonGroupDto updateLessonGroup(LessonGroupUpdateCommand lessonGroupUpdateCommand) {
     LessonGroup lessonGroup =
         lessonGroupRepository
-            .findLessonGroupById(lessonGroupUpdateCommand.getId())
+            .findLessonGroupById(lessonGroupUpdateCommand.id())
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(
-                        LessonGroup.class, String.valueOf(lessonGroupUpdateCommand.getId())));
+                        LessonGroup.class, String.valueOf(lessonGroupUpdateCommand.id())));
     LessonGroup persistedLessonGroup =
         lessonGroupRepository.updateLessonGroup(
             lessonGroupUpdateCommand.toLessonGroup(lessonGroup));
 
     List<LessonDto> lessonDtos =
-        lessonRepository.findLessonsByLessonGroupId(persistedLessonGroup.getId()).stream()
+        lessonRepository.findLessonsByLessonGroupId(persistedLessonGroup.id()).stream()
             .map(LessonDto::from)
             .toList();
 
@@ -59,7 +60,7 @@ public class LessonGroupApplicationServiceImpl implements LessonGroupApplication
 
   @Override
   @Transactional
-  public void deleteLessonGroupById(Integer lessonGroupId) {
+  public void deleteLessonGroupById(UUID lessonGroupId) {
     // レッスングループが存在しなくてもエラーにはしない。
     lessonGroupRepository
         .findLessonGroupById(lessonGroupId)

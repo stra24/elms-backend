@@ -1,14 +1,20 @@
 package com.everrefine.elms.application.service;
 
 import com.everrefine.elms.application.command.LessonCreateCommand;
+import com.everrefine.elms.application.command.LessonImportCommand;
+import com.everrefine.elms.application.command.LessonImportRowCommand;
 import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
 import com.everrefine.elms.application.command.LessonSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.*;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
+import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.Lesson;
-import com.everrefine.elms.domain.model.lesson.LessonGroupWithLesson;
+import com.everrefine.elms.domain.model.lesson.LessonGroup;
+import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
 import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
+import com.everrefine.elms.domain.repository.CourseRepository;
+import com.everrefine.elms.domain.repository.LessonGroupRepository;
 import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.domain.service.LessonDomainService;
 import java.io.BufferedWriter;
@@ -20,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
@@ -28,12 +35,14 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** レッスンアプリケーションサービスの実装に関するクラス。 */
+/** レッスンアプリケーションサービスの実装。 */
 @Service
 @AllArgsConstructor
 public class LessonApplicationServiceImpl implements LessonApplicationService {
 
   private final LessonRepository lessonRepository;
+  private final LessonGroupRepository lessonGroupRepository;
+  private final CourseRepository courseRepository;
   private final LessonDomainService lessonDomainService;
 
   /**
@@ -59,7 +68,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
 
   @Override
   @Transactional(readOnly = true)
-  public LessonDto findLessonById(Integer courseId, Integer lessonGroupId, Integer lessonId) {
+  public LessonDto findLessonById(UUID courseId, UUID lessonGroupId, UUID lessonId) {
     Lesson lesson = findLessonBelongingToCourseAndGroupOrThrow(lessonId, courseId, lessonGroupId);
     return LessonDto.from(lesson);
   }
@@ -73,7 +82,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
     List<LessonDto> lessonDtos = lessons.stream().map(LessonDto::from).toList();
 
     return LessonPageDto.from(
-        lessonDtos, lessonSearchCommand.getPageNum(), lessonSearchCommand.getPageSize(), totalSize);
+        lessonDtos, lessonSearchCommand.pageNum(), lessonSearchCommand.pageSize(), totalSize);
   }
 
   /**
@@ -85,10 +94,9 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
    * @return レッスンエンティティ
    */
   private Lesson findLessonBelongingToCourseAndGroupOrThrow(
-      Integer lessonId, Integer courseId, Integer lessonGroupId) {
+      UUID lessonId, UUID courseId, UUID lessonGroupId) {
     Lesson lesson = findLessonOrThrow(lessonId);
-    if (!lesson.getCourseId().equals(courseId)
-        || !lesson.getLessonGroupId().equals(lessonGroupId)) {
+    if (!lesson.courseId().equals(courseId) || !lesson.lessonGroupId().equals(lessonGroupId)) {
       throw new ResourceNotFoundException(Lesson.class, String.valueOf(lessonId));
     }
     return lesson;
@@ -100,7 +108,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
    * @param lessonId レッスンID
    * @return レッスンエンティティ
    */
-  private Lesson findLessonOrThrow(Integer lessonId) {
+  private Lesson findLessonOrThrow(UUID lessonId) {
     return lessonRepository
         .findById(lessonId)
         .orElseThrow(() -> new ResourceNotFoundException(Lesson.class, String.valueOf(lessonId)));
@@ -108,13 +116,10 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
 
   @Override
   @Transactional(readOnly = true)
-  public CourseLessonsDto findLessonsGroupedByLessonGroup(Integer courseId) {
-    List<LessonGroupWithLesson> lessons =
+  public CourseLessonsDto findLessonsGroupedByLessonGroup(UUID courseId) {
+    List<LessonGroupWithLessons> lessonGroups =
         lessonRepository.findLessonsGroupedByLessonGroup(courseId);
-    Map<Integer, List<LessonGroupWithLesson>> lessonGroupIdAndLessonsMap =
-        lessons.stream().collect(Collectors.groupingBy(LessonGroupWithLesson::getLessonGroupId));
-    List<LessonGroupDto> lessonGroupDtos =
-        lessonGroupIdAndLessonsMap.values().stream().map(LessonGroupDto::from).toList();
+    List<LessonGroupDto> lessonGroupDtos = lessonGroups.stream().map(LessonGroupDto::from).toList();
     return new CourseLessonsDto(courseId, lessonGroupDtos);
   }
 
@@ -122,7 +127,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   @Transactional
   public LessonDto createLesson(LessonCreateCommand lessonCreateCommand) {
     BigDecimal lessonOrder =
-        lessonDomainService.issueLessonOrder(lessonCreateCommand.getLessonGroupId());
+        lessonDomainService.issueLessonOrder(lessonCreateCommand.lessonGroupId());
     Lesson createdLesson = lessonRepository.createLesson(lessonCreateCommand.toLesson(lessonOrder));
     return LessonDto.from(createdLesson);
   }
@@ -130,7 +135,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   @Override
   @Transactional
   public LessonDto updateLesson(LessonUpdateCommand lessonUpdateCommand) {
-    Lesson currentLesson = findLessonOrThrow(lessonUpdateCommand.getId());
+    Lesson currentLesson = findLessonOrThrow(lessonUpdateCommand.id());
     Lesson updatedLesson =
         lessonRepository.updateLesson(lessonUpdateCommand.toLesson(currentLesson));
     return LessonDto.from(updatedLesson);
@@ -138,7 +143,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
 
   @Override
   @Transactional
-  public void deleteLessonById(Integer lessonId) {
+  public void deleteLessonById(UUID lessonId) {
     lessonRepository
         .findById(lessonId)
         .ifPresent(lesson -> lessonRepository.deleteLessonById(lessonId));
@@ -152,7 +157,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
    * @return レッスン順序（lessonIdがnullの場合はnull）
    */
   private BigDecimal resolveLessonOrderOrNull(
-      Integer lessonId, Map<Integer, Lesson> lessonIdAndLessonMap) {
+      UUID lessonId, Map<UUID, Lesson> lessonIdAndLessonMap) {
     if (lessonId == null) {
       return null;
     }
@@ -162,17 +167,17 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
       throw new ResourceNotFoundException(Lesson.class, String.valueOf(lessonId));
     }
 
-    return lesson.getLessonOrder().getValue();
+    return lesson.lessonOrder().value();
   }
 
   @Override
   @Transactional
   public LessonDto updateLessonOrder(LessonOrderUpdateCommand lessonOrderUpdateCommand) {
-    Integer targetLessonId = lessonOrderUpdateCommand.getLessonId();
-    Integer precedingLessonId = lessonOrderUpdateCommand.getPrecedingLessonId();
-    Integer followingLessonId = lessonOrderUpdateCommand.getFollowingLessonId();
+    UUID targetLessonId = lessonOrderUpdateCommand.lessonId();
+    UUID precedingLessonId = lessonOrderUpdateCommand.precedingLessonId();
+    UUID followingLessonId = lessonOrderUpdateCommand.followingLessonId();
 
-    List<Integer> lessonIds = new ArrayList<>();
+    List<UUID> lessonIds = new ArrayList<>();
     lessonIds.add(targetLessonId);
     if (precedingLessonId != null && !lessonIds.contains(precedingLessonId)) {
       lessonIds.add(precedingLessonId);
@@ -181,9 +186,9 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
       lessonIds.add(followingLessonId);
     }
 
-    Map<Integer, Lesson> lessonIdAndLessonMap =
+    Map<UUID, Lesson> lessonIdAndLessonMap =
         lessonRepository.findByIdIn(lessonIds).stream()
-            .collect(Collectors.toMap(Lesson::getId, Function.identity()));
+            .collect(Collectors.toMap(Lesson::id, Function.identity()));
 
     Lesson targetLesson = lessonIdAndLessonMap.get(targetLessonId);
     if (targetLesson == null) {
@@ -200,6 +205,69 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
     Lesson savedLesson = lessonRepository.updateLesson(updatedLesson);
 
     return LessonDto.from(savedLesson);
+  }
+
+  /**
+   * CSVファイルをアップロードして指定コースのレッスン構成を一括更新する。
+   *
+   * @param lessonImportCommand レッスン取込用Command
+   * @return 取込したレッスングループ件数とレッスン件数
+   */
+  @Override
+  @Transactional
+  public LessonImportResponseDto importLessonsCsv(LessonImportCommand lessonImportCommand) {
+    UUID courseId = lessonImportCommand.courseId();
+    validateCourseExists(courseId);
+
+    Map<String, List<LessonImportRowCommand>> rowsByLessonGroupTitle =
+        lessonImportCommand.getRowsByLessonGroupTitle();
+
+    lessonRepository.deleteLessonsByCourseId(courseId);
+    lessonGroupRepository.deleteLessonGroupsByCourseId(courseId);
+
+    importLessonGroupsAndLessons(courseId, rowsByLessonGroupTitle);
+
+    return new LessonImportResponseDto(
+        lessonImportCommand.getImportedLessonGroupCount(),
+        lessonImportCommand.getImportedLessonCount());
+  }
+
+  private void importLessonGroupsAndLessons(
+      UUID courseId, Map<String, List<LessonImportRowCommand>> rowsByLessonGroupTitle) {
+    List<Lesson> lessons = new ArrayList<>();
+    int lessonGroupIndex = 0;
+    for (List<LessonImportRowCommand> lessonGroupRows : rowsByLessonGroupTitle.values()) {
+      LessonGroup savedLessonGroup = createLessonGroup(courseId, lessonGroupRows, lessonGroupIndex);
+      lessons.addAll(toLessons(courseId, savedLessonGroup.id(), lessonGroupRows));
+      lessonGroupIndex++;
+    }
+
+    lessonRepository.createLessons(lessons);
+  }
+
+  private LessonGroup createLessonGroup(
+      UUID courseId, List<LessonImportRowCommand> lessonGroupRows, int lessonGroupIndex) {
+    LessonImportRowCommand firstRow = lessonGroupRows.getFirst();
+    return lessonGroupRepository.createLessonGroup(
+        firstRow.toLessonGroup(courseId, LessonImportCommand.calculateOrder(lessonGroupIndex)));
+  }
+
+  private List<Lesson> toLessons(
+      UUID courseId, UUID lessonGroupId, List<LessonImportRowCommand> lessonGroupRows) {
+    List<Lesson> lessons = new ArrayList<>();
+    int lessonIndex = 0;
+    for (LessonImportRowCommand row : lessonGroupRows) {
+      lessons.add(
+          row.toLesson(lessonGroupId, courseId, LessonImportCommand.calculateOrder(lessonIndex)));
+      lessonIndex++;
+    }
+    return lessons;
+  }
+
+  private void validateCourseExists(UUID courseId) {
+    courseRepository
+        .findCourseById(courseId)
+        .orElseThrow(() -> new ResourceNotFoundException(Course.class, String.valueOf(courseId)));
   }
 
   @Transactional(readOnly = true)
@@ -244,13 +312,13 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
       // 中身をセットする ( 1レッスンごとに改行 )
       for (LessonWithCourseAndLessonGroupDto dto : dtos) {
         String[] lessons = {
-          escape(String.valueOf(dto.getCourseId())),
-          escape(dto.getCourseTitle()),
-          escape(String.valueOf(dto.getLessonGroupId())),
-          escape(dto.getLessonGroupTitle()),
-          escape(String.valueOf(dto.getLessonId())),
-          escape(dto.getLessonTitle()),
-          escape(dto.getVideoUrl())
+          escape(String.valueOf(dto.courseId())),
+          escape(dto.courseTitle()),
+          escape(String.valueOf(dto.lessonGroupId())),
+          escape(dto.lessonGroupTitle()),
+          escape(String.valueOf(dto.lessonId())),
+          escape(dto.lessonTitle()),
+          escape(dto.videoUrl())
         };
         file.println(String.join(",", lessons));
       }

@@ -5,6 +5,7 @@ import com.everrefine.elms.application.command.NewsSearchCommand;
 import com.everrefine.elms.application.command.NewsUpdateCommand;
 import com.everrefine.elms.application.dto.NewsDto;
 import com.everrefine.elms.application.dto.NewsPageDto;
+import java.util.UUID;
 
 /** お知らせアプリケーションサービスのインターフェース。 */
 public interface NewsApplicationService {
@@ -15,7 +16,7 @@ public interface NewsApplicationService {
    * @param id お知らせID
    * @return お知らせDTO
    */
-  NewsDto findNewsById(Integer id);
+  NewsDto findNewsById(UUID id);
 
   /**
    * お知らせ一覧をページング取得する。
@@ -44,5 +45,5 @@ public interface NewsApplicationService {
    *
    * @param newsId お知らせID
    */
-  void deleteNewsById(Integer newsId);
+  void deleteNewsById(UUID newsId);
 }

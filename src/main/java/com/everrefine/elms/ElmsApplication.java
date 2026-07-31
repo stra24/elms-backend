@@ -3,7 +3,7 @@ package com.everrefine.elms;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-/** ELMSアプリケーションのエントリーポイントに関するクラス。 */
+/** ELMSアプリケーションのエントリーポイント。 */
 @SpringBootApplication
 public class ElmsApplication {
 

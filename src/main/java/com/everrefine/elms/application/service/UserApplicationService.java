@@ -9,6 +9,7 @@ import com.everrefine.elms.application.command.UserUpdateCommand;
 import com.everrefine.elms.application.dto.UserDto;
 import com.everrefine.elms.application.dto.UserImportResponseDto;
 import com.everrefine.elms.application.dto.UserPageDto;
+import java.util.UUID;
 import org.springframework.core.io.Resource;
 
 /** ユーザーアプリケーションサービスのインターフェース。 */
@@ -20,7 +21,7 @@ public interface UserApplicationService {
    * @param userId ユーザーID
    * @return ユーザーDTO
    */
-  UserDto findUserById(Integer userId);
+  UserDto findUserById(UUID userId);
 
   /**
    * ユーザー一覧をページング取得する。
@@ -49,7 +50,7 @@ public interface UserApplicationService {
    *
    * @param userId ユーザーID
    */
-  void deleteUserById(Integer userId);
+  void deleteUserById(UUID userId);
 
   /**
    * ユーザーのログイン履歴を更新する。

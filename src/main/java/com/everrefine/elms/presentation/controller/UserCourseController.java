@@ -11,8 +11,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.Positive;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,7 +40,7 @@ public class UserCourseController {
     @ApiResponse(responseCode = "404", description = "ユーザーが見つかりません")
   })
   @GetMapping
-  public List<UserCourseDto> findUserCourses(@PathVariable @Positive Integer userId) {
+  public List<UserCourseDto> findUserCourses(@PathVariable UUID userId) {
     return userCourseApplicationService.findUserCourses(userId);
   }
 
@@ -61,7 +61,7 @@ public class UserCourseController {
   })
   @GetMapping("/{courseId}/lessons")
   public List<UserLessonGroupDto> findUserLessons(
-      @PathVariable @Positive Integer userId, @PathVariable @Positive Integer courseId) {
+      @PathVariable UUID userId, @PathVariable UUID courseId) {
     return userLessonApplicationService.findUserLessons(userId, courseId);
   }
 
@@ -83,10 +83,10 @@ public class UserCourseController {
   })
   @GetMapping("/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}")
   public UserLessonDetailDto findUserLessonDetail(
-      @PathVariable @Positive Integer userId,
-      @PathVariable @Positive Integer courseId,
-      @PathVariable @Positive Integer lessonGroupId,
-      @PathVariable @Positive Integer lessonId) {
+      @PathVariable UUID userId,
+      @PathVariable UUID courseId,
+      @PathVariable UUID lessonGroupId,
+      @PathVariable UUID lessonId) {
     return userLessonApplicationService.findUserLessonDetail(
         userId, courseId, lessonGroupId, lessonId);
   }
@@ -109,10 +109,10 @@ public class UserCourseController {
   })
   @PutMapping("/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}/completion")
   public void updateUserLessonCompletionStatus(
-      @PathVariable @Positive Integer userId,
-      @PathVariable @Positive Integer courseId,
-      @PathVariable @Positive Integer lessonGroupId,
-      @PathVariable @Positive Integer lessonId,
+      @PathVariable UUID userId,
+      @PathVariable UUID courseId,
+      @PathVariable UUID lessonGroupId,
+      @PathVariable UUID lessonId,
       @RequestBody
           UserLessonCompletionStatusUpdateRequest userLessonCompletionStatusUpdateRequest) {
     UserLessonCompletionStatusUpdateCommand userLessonCompletionStatusUpdateCommand =

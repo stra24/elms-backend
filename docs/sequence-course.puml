@@ -18,7 +18,7 @@ participant "CourseRepository" as Repo
 database "DB" as DB
 
 note over Client
-  全APIはJWT認証済みであることが前提（JwtFilterは省略）
+  全APIはJWT認証済みであることが前提（認証・JWT検証の詳細は「認証」シーケンス図を参照）
 end note
 
 ' ============================================================

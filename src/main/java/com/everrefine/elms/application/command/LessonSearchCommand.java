@@ -3,21 +3,16 @@ package com.everrefine.elms.application.command;
 import com.everrefine.elms.domain.model.lesson.LessonSearchCriteria;
 import jakarta.annotation.Nullable;
 import java.time.LocalDate;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 /** レッスン検索用のコマンド。 */
-@Getter
-@AllArgsConstructor
-public class LessonSearchCommand {
-
-  private int pageNum;
-  private int pageSize;
-  @Nullable private String courseId;
-  @Nullable private String lessonGroupId;
-  @Nullable private String title;
-  @Nullable private LocalDate createdDateFrom;
-  @Nullable private LocalDate createdDateTo;
+public record LessonSearchCommand(
+    int pageNum,
+    int pageSize,
+    @Nullable String courseId,
+    @Nullable String lessonGroupId,
+    @Nullable String title,
+    @Nullable LocalDate createdDateFrom,
+    @Nullable LocalDate createdDateTo) {
 
   /**
    * LessonSearchCriteriaに変換する。

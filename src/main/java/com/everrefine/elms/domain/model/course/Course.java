@@ -1,38 +1,21 @@
 package com.everrefine.elms.domain.model.course;
 
 import com.everrefine.elms.domain.model.Order;
-import com.everrefine.elms.domain.model.Url;
+import com.everrefine.elms.domain.model.ThumbnailUrl;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
+import java.util.UUID;
 import org.springframework.lang.Nullable;
 
-/** コースのエンティティ。 */
-@Getter
-@AllArgsConstructor
-@Table("courses")
-public class Course {
-
-  @Id private final Integer id;
-
-  @Nullable @Column("thumbnail_url")
-  private Url thumbnailUrl;
-
-  private Title title;
-  @Nullable private Description description;
-
-  @Column("course_order")
-  private Order courseOrder;
-
-  @Column("created_at")
-  private LocalDateTime createdAt;
-
-  @Column("updated_at")
-  private LocalDateTime updatedAt;
+/** コースのドメインモデル。 */
+public record Course(
+    UUID id,
+    @Nullable ThumbnailUrl thumbnailUrl,
+    CourseTitle title,
+    @Nullable CourseDescription description,
+    Order courseOrder,
+    LocalDateTime createdAt,
+    LocalDateTime updatedAt) {
 
   /**
    * 新規作成用のコースを作成する。
@@ -50,9 +33,9 @@ public class Course {
       BigDecimal courseOrder) {
     return new Course(
         null,
-        thumbnailUrl == null ? null : new Url(thumbnailUrl),
-        new Title(title),
-        description == null ? null : new Description(description),
+        thumbnailUrl == null ? null : new ThumbnailUrl(thumbnailUrl),
+        new CourseTitle(title),
+        description == null ? null : new CourseDescription(description),
         new Order(courseOrder),
         LocalDateTime.now(),
         LocalDateTime.now());
@@ -74,9 +57,9 @@ public class Course {
       BigDecimal courseOrder) {
     return new Course(
         id,
-        thumbnailUrl == null ? null : new Url(thumbnailUrl),
-        new Title(title),
-        description == null ? null : new Description(description),
+        thumbnailUrl == null ? null : new ThumbnailUrl(thumbnailUrl),
+        new CourseTitle(title),
+        description == null ? null : new CourseDescription(description),
         new Order(courseOrder),
         createdAt,
         LocalDateTime.now());

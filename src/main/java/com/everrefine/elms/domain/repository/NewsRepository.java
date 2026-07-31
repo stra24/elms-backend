@@ -4,6 +4,7 @@ import com.everrefine.elms.domain.model.news.News;
 import com.everrefine.elms.domain.model.news.NewsSearchCondition;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /** お知らせのリポジトリインターフェース。 */
 public interface NewsRepository {
@@ -14,7 +15,7 @@ public interface NewsRepository {
    * @param newsIds お知らせIDのリスト
    * @return お知らせ一覧
    */
-  List<News> findNewsByIds(List<Integer> newsIds);
+  List<News> findNewsByIds(List<UUID> newsIds);
 
   /**
    * 検索条件に合致するお知らせの件数を取得する。
@@ -36,7 +37,7 @@ public interface NewsRepository {
    *
    * @param id お知らせID
    */
-  void deleteNewsById(Integer id);
+  void deleteNewsById(UUID id);
 
   /**
    * お知らせを更新する。
@@ -51,7 +52,7 @@ public interface NewsRepository {
    * @param newsSearchCondition 検索条件
    * @return お知らせIDのリスト
    */
-  List<Integer> findNewsIdsBySearchConditions(NewsSearchCondition newsSearchCondition);
+  List<UUID> findNewsIdsBySearchConditions(NewsSearchCondition newsSearchCondition);
 
   /**
    * IDでお知らせを取得する。
@@ -59,5 +60,5 @@ public interface NewsRepository {
    * @param id お知らせID
    * @return お知らせ（存在しない場合は空）
    */
-  Optional<News> findNewsById(Integer id);
+  Optional<News> findNewsById(UUID id);
 }

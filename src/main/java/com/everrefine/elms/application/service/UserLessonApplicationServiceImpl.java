@@ -1,31 +1,29 @@
 package com.everrefine.elms.application.service;
 
 import com.everrefine.elms.application.command.UserLessonCompletionStatusUpdateCommand;
-import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.UserLessonDetailDto;
-import com.everrefine.elms.application.dto.UserLessonDto;
 import com.everrefine.elms.application.dto.UserLessonGroupDto;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.UserLesson;
 import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.Lesson;
-import com.everrefine.elms.domain.model.lesson.LessonGroupWithLesson;
+import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
+import com.everrefine.elms.domain.model.lesson.LessonInGroup;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.CourseRepository;
 import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.domain.repository.UserLessonRepository;
 import com.everrefine.elms.domain.repository.UserRepository;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** ユーザーレッスンアプリケーションサービスの実装に関するクラス。 */
+/** ユーザーレッスンアプリケーションサービスの実装。 */
 @Service
 @AllArgsConstructor
 public class UserLessonApplicationServiceImpl implements UserLessonApplicationService {
@@ -38,7 +36,7 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
   @Override
   @Transactional(readOnly = true)
   public UserLessonDetailDto findUserLessonDetail(
-      Integer userId, Integer courseId, Integer lessonGroupId, Integer lessonId) {
+      UUID userId, UUID courseId, UUID lessonGroupId, UUID lessonId) {
     Lesson lesson =
         findLessonBelongingToCourseAndLessonGroupOrThrow(lessonId, courseId, lessonGroupId);
     boolean isLessonCompleted =
@@ -49,25 +47,25 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
   @Override
   @Transactional
   public void updateUserLesson(
-      Integer courseId,
-      Integer lessonGroupId,
+      UUID courseId,
+      UUID lessonGroupId,
       UserLessonCompletionStatusUpdateCommand userLessonCompletionStatusUpdateCommand) {
     // データが存在することのチェックする。
     findLessonBelongingToCourseAndLessonGroupOrThrow(
-        userLessonCompletionStatusUpdateCommand.getLessonId(), courseId, lessonGroupId);
+        userLessonCompletionStatusUpdateCommand.lessonId(), courseId, lessonGroupId);
     userRepository
-        .findUserById(userLessonCompletionStatusUpdateCommand.getUserId())
+        .findUserById(userLessonCompletionStatusUpdateCommand.userId())
         .orElseThrow(
             () ->
                 new ResourceNotFoundException(
-                    User.class, userLessonCompletionStatusUpdateCommand.getUserId().toString()));
+                    User.class, userLessonCompletionStatusUpdateCommand.userId().toString()));
 
     // ユーザーのレッスン完了状態を更新する。
     if (userLessonCompletionStatusUpdateCommand.isLessonCompleted()) {
       userLessonRepository
           .findByUserIdAndLessonId(
-              userLessonCompletionStatusUpdateCommand.getUserId(),
-              userLessonCompletionStatusUpdateCommand.getLessonId())
+              userLessonCompletionStatusUpdateCommand.userId(),
+              userLessonCompletionStatusUpdateCommand.lessonId())
           .ifPresentOrElse(
               currentUserLesson -> {
                 UserLesson updatedUserLesson = currentUserLesson.update();
@@ -80,8 +78,8 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
               });
     } else {
       userLessonRepository.deleteByUserIdAndLessonId(
-          userLessonCompletionStatusUpdateCommand.getUserId(),
-          userLessonCompletionStatusUpdateCommand.getLessonId());
+          userLessonCompletionStatusUpdateCommand.userId(),
+          userLessonCompletionStatusUpdateCommand.lessonId());
     }
   }
 
@@ -94,10 +92,9 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
    * @return レッスンエンティティ
    */
   private Lesson findLessonBelongingToCourseAndLessonGroupOrThrow(
-      Integer lessonId, Integer courseId, Integer lessonGroupId) {
+      UUID lessonId, UUID courseId, UUID lessonGroupId) {
     Lesson lesson = findLessonOrThrow(lessonId);
-    if (!lesson.getCourseId().equals(courseId)
-        || !lesson.getLessonGroupId().equals(lessonGroupId)) {
+    if (!lesson.courseId().equals(courseId) || !lesson.lessonGroupId().equals(lessonGroupId)) {
       throw new ResourceNotFoundException(Lesson.class, String.valueOf(lessonId));
     }
     return lesson;
@@ -109,7 +106,7 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
    * @param lessonId レッスンID
    * @return レッスンエンティティ
    */
-  private Lesson findLessonOrThrow(Integer lessonId) {
+  private Lesson findLessonOrThrow(UUID lessonId) {
     return lessonRepository
         .findById(lessonId)
         .orElseThrow(() -> new ResourceNotFoundException(Lesson.class, String.valueOf(lessonId)));
@@ -117,7 +114,7 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
 
   @Override
   @Transactional(readOnly = true)
-  public List<UserLessonGroupDto> findUserLessons(Integer userId, Integer courseId) {
+  public List<UserLessonGroupDto> findUserLessons(UUID userId, UUID courseId) {
     userRepository
         .findUserById(userId)
         .orElseThrow(() -> new ResourceNotFoundException(User.class, String.valueOf(userId)));
@@ -125,39 +122,22 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
         .findCourseById(courseId)
         .orElseThrow(() -> new ResourceNotFoundException(Course.class, String.valueOf(courseId)));
 
-    List<LessonGroupWithLesson> allLessonsInTargetCourse =
+    List<LessonGroupWithLessons> lessonGroups =
         lessonRepository.findLessonsGroupedByLessonGroup(courseId);
 
-    Set<Integer> lessonIds =
-        allLessonsInTargetCourse.stream()
-            .map(LessonGroupWithLesson::getLessonId)
+    Set<UUID> lessonIds =
+        lessonGroups.stream()
+            .flatMap(group -> group.lessons().stream())
+            .map(LessonInGroup::id)
             .collect(Collectors.toSet());
 
-    Set<Integer> completedLessonIds =
-        userLessonRepository.findLessonIdByUserIdAndLessonIdIn(userId, lessonIds);
+    Set<UUID> completedLessonIds =
+        lessonIds.isEmpty()
+            ? Collections.emptySet()
+            : userLessonRepository.findLessonIdByUserIdAndLessonIdIn(userId, lessonIds);
 
-    Map<Integer, List<LessonGroupWithLesson>> lessonGroupIdAndLessonsMap =
-        allLessonsInTargetCourse.stream()
-            .sorted(Comparator.comparing(LessonGroupWithLesson::getLessonGroupOrder))
-            .collect(
-                Collectors.groupingBy(
-                    LessonGroupWithLesson::getLessonGroupId,
-                    LinkedHashMap::new,
-                    Collectors.toList()));
-    return lessonGroupIdAndLessonsMap.values().stream()
-        .map(
-            allLessonsInTargetLessonGroup -> {
-              List<UserLessonDto> userLessonDtos =
-                  allLessonsInTargetLessonGroup.stream()
-                      .sorted(Comparator.comparing(LessonGroupWithLesson::getLessonOrder))
-                      .map(
-                          lesson ->
-                              new UserLessonDto(
-                                  LessonDto.from(lesson),
-                                  completedLessonIds.contains(lesson.getLessonId())))
-                      .toList();
-              return UserLessonGroupDto.from(allLessonsInTargetLessonGroup, userLessonDtos);
-            })
+    return lessonGroups.stream()
+        .map(group -> UserLessonGroupDto.from(group, completedLessonIds))
         .toList();
   }
 }

@@ -2,20 +2,16 @@ package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.domain.model.user.User;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.util.UUID;
 
 /** 更新用ユーザーのコマンド。 */
-@Getter
-@AllArgsConstructor
-public class UserUpdateCommand {
-
-  private Integer id;
-  private String realName;
-  private String userName;
-  private String emailAddress;
-  private String thumbnailUrl;
-  private LocalDateTime updatedAt;
+public record UserUpdateCommand(
+    UUID id,
+    String realName,
+    String userName,
+    String emailAddress,
+    String thumbnailUrl,
+    LocalDateTime updatedAt) {
 
   /**
    * Userエンティティに変換する。

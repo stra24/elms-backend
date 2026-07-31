@@ -2,7 +2,7 @@ package com.everrefine.elms.presentation.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** エラーレスポンスに関するクラス。 */
+/** エラーレスポンス。 */
 @Schema(description = "エラーレスポンス")
 public record ErrorResponse(
     @Schema(description = "エラーコード", example = "RESOURCE_NOT_FOUND") String code,

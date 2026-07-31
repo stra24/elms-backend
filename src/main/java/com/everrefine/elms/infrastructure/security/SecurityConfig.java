@@ -19,7 +19,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-/** Spring Security設定に関するクラス。 */
+/** Spring Security設定。 */
 @EnableMethodSecurity
 @Configuration
 @EnableWebSecurity

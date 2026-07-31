@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /** ユーザーレッスンのリポジトリインターフェース。 */
 public interface UserLessonRepository {
@@ -16,7 +17,7 @@ public interface UserLessonRepository {
    * @param lessonId レッスンID
    * @return ユーザーレッスン（存在しない場合は空）
    */
-  Optional<UserLesson> findByUserIdAndLessonId(Integer userId, Integer lessonId);
+  Optional<UserLesson> findByUserIdAndLessonId(UUID userId, UUID lessonId);
 
   /**
    * ユーザーレッスンを保存する。
@@ -31,7 +32,7 @@ public interface UserLessonRepository {
    * @param userId ユーザーID
    * @param lessonId レッスンID
    */
-  void deleteByUserIdAndLessonId(Integer userId, Integer lessonId);
+  void deleteByUserIdAndLessonId(UUID userId, UUID lessonId);
 
   /**
    * ユーザーの完了レッスン総数を取得する。
@@ -39,7 +40,7 @@ public interface UserLessonRepository {
    * @param userId ユーザーID
    * @return 完了レッスン総数
    */
-  int countAllByUserId(Integer userId);
+  int countAllByUserId(UUID userId);
 
   /**
    * 複数ユーザーの完了レッスン数をMap形式で取得する。
@@ -47,7 +48,7 @@ public interface UserLessonRepository {
    * @param userIds ユーザーIDのリスト
    * @return ユーザーIDをキー、完了レッスン数を値とするMap
    */
-  Map<Integer, Integer> countByUserIds(List<Integer> userIds);
+  Map<UUID, Integer> countByUserIds(List<UUID> userIds);
 
   /**
    * ユーザーのコース内完了レッスン数を取得する。
@@ -56,7 +57,7 @@ public interface UserLessonRepository {
    * @param courseId コースID
    * @return 完了レッスン数
    */
-  int countCompletedLessonsByUserIdAndCourseId(Integer userId, Integer courseId);
+  int countCompletedLessonsByUserIdAndCourseId(UUID userId, UUID courseId);
 
   /**
    * ユーザーが完了したレッスンIDのセットを取得する。
@@ -65,5 +66,5 @@ public interface UserLessonRepository {
    * @param lessonIds 検索対象のレッスンIDのセット
    * @return 完了済みレッスンIDのセット
    */
-  Set<Integer> findLessonIdByUserIdAndLessonIdIn(Integer userId, Set<Integer> lessonIds);
+  Set<UUID> findLessonIdByUserIdAndLessonIdIn(UUID userId, Set<UUID> lessonIds);
 }

@@ -2,22 +2,18 @@ package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.model.user.UserRole;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.util.UUID;
 
 /** 新規作成用ユーザーのコマンド。 */
-@Getter
-@AllArgsConstructor
-public class UserCreateCommand {
-
-  private Integer id;
-  private String realName;
-  private String userName;
-  private String emailAddress;
-  private String password;
-  private String confirmPassword;
-  private String thumbnailUrl;
-  private UserRole userRole;
+public record UserCreateCommand(
+    UUID id,
+    String realName,
+    String userName,
+    String emailAddress,
+    String password,
+    String confirmPassword,
+    String thumbnailUrl,
+    UserRole userRole) {
 
   /**
    * Userエンティティに変換する。

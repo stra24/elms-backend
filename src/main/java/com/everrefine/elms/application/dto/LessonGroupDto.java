@@ -1,16 +1,17 @@
 package com.everrefine.elms.application.dto;
 
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
-import com.everrefine.elms.domain.model.lesson.LessonGroupWithLesson;
+import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
-/** レッスングループDTOに関するクラス。 */
+/** レッスングループのDTO。 */
 public record LessonGroupDto(
-    @Schema(description = "レッスングループID", example = "1") Integer id,
-    @Schema(description = "コースID", example = "2") Integer courseId,
+    @Schema(description = "レッスングループID", example = "1") UUID id,
+    @Schema(description = "コースID", example = "2") UUID courseId,
     @Schema(description = "レッスングループの表示順", example = "1.0") BigDecimal lessonGroupOrder,
     @Schema(description = "レッスングループ名", example = "第1章: 基礎編") String name,
     @Schema(description = "登録日時", example = "2024-01-01T09:00:00") LocalDateTime createdAt,
@@ -36,37 +37,31 @@ public record LessonGroupDto(
    */
   public static LessonGroupDto from(LessonGroup lessonGroup, List<LessonDto> lessons) {
     return new LessonGroupDto(
-        lessonGroup.getId(),
-        lessonGroup.getCourseId(),
-        lessonGroup.getLessonGroupOrder().getValue(),
-        lessonGroup.getTitle().getValue(),
-        lessonGroup.getCreatedAt(),
-        lessonGroup.getUpdatedAt(),
+        lessonGroup.id(),
+        lessonGroup.courseId(),
+        lessonGroup.lessonGroupOrder().value(),
+        lessonGroup.title().value(),
+        lessonGroup.createdAt(),
+        lessonGroup.updatedAt(),
         lessons);
   }
 
   /**
-   * LessonGroupWithLessonリストからLessonGroupDtoを生成する。
+   * レッスングループと配下レッスンの読み取りモデルからLessonGroupDtoを生成する。
    *
-   * @param lessons レッスングループとレッスンの結合情報リスト
+   * @param group レッスングループと配下レッスンの読み取りモデル
    * @return レッスングループDTO
    */
-  public static LessonGroupDto from(List<LessonGroupWithLesson> lessons) {
-    LessonGroupWithLesson first = lessons.getFirst();
-
+  public static LessonGroupDto from(LessonGroupWithLessons group) {
     List<LessonDto> lessonDtos =
-        lessons.stream()
-            .filter(lesson -> lesson.getLessonId() != null)
-            .map(LessonDto::from)
-            .toList();
-
+        group.lessons().stream().map(lesson -> LessonDto.from(group, lesson)).toList();
     return new LessonGroupDto(
-        first.getLessonGroupId(),
-        first.getCourseId(),
-        first.getLessonGroupOrder(),
-        first.getLessonGroupTitle(),
-        first.getLessonGroupCreatedAt(),
-        first.getLessonGroupUpdatedAt(),
+        group.id(),
+        group.courseId(),
+        group.lessonGroupOrder(),
+        group.title(),
+        group.createdAt(),
+        group.updatedAt(),
         lessonDtos);
   }
 }

@@ -8,23 +8,16 @@ import com.everrefine.elms.domain.model.user.UserName;
 import com.everrefine.elms.domain.model.user.UserRole;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.util.UUID;
 
 /** CSV取込用ユーザー行のコマンド。CSVの1行分のユーザー情報を保持する。 */
-@Getter
-@AllArgsConstructor
-public class UserImportRowCommand {
+public record UserImportRowCommand(
+    UserRole userRole, String realName, String emailAddress, String userName) {
 
   private static final int RANDOM_PASSWORD_LENGTH = 32;
   private static final char[] PASSWORD_CHARS =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".toCharArray();
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-
-  private final UserRole userRole;
-  private final String realName;
-  private final String emailAddress;
-  private final String userName;
 
   /**
    * 保存用ユーザーを作成する。
@@ -32,7 +25,7 @@ public class UserImportRowCommand {
    * @param id ユーザーID（null の場合はDB採番）
    * @return 保存用ユーザー
    */
-  public User toUser(Integer id) {
+  public User toUser(UUID id) {
     LocalDateTime now = LocalDateTime.now();
     return new User(
         id,
@@ -62,7 +55,7 @@ public class UserImportRowCommand {
    * @return 一致する場合はtrue
    */
   public boolean hasEmailAddress(EmailAddress emailAddress) {
-    return this.emailAddress.equals(emailAddress.getValue());
+    return this.emailAddress.equals(emailAddress.value());
   }
 
   /**
