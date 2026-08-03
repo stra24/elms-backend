@@ -18,14 +18,14 @@ public final class CsvImportUtils {
   private CsvImportUtils() {}
 
   /**
-   * CSVファイルを検証する。
+   * CSVファイルが未指定、または拡張子がCSVでない場合に例外をスローする。
    *
    * @param filename アップロードファイル名
    * @param contentMissing ファイル内容が未指定の場合はtrue
    * @param exceptionFactory エラーメッセージから例外を生成する関数
    * @throws RuntimeException ファイル未指定、または拡張子がCSVでない場合
    */
-  public static void validateCsvFile(
+  public static void throwExceptionIfCsvFileInvalid(
       String filename,
       boolean contentMissing,
       Function<String, ? extends RuntimeException> exceptionFactory) {
@@ -70,7 +70,7 @@ public final class CsvImportUtils {
         throw exceptionFactory.apply("CSVファイルが空です");
       }
 
-      validateCsvHeader(
+      throwExceptionIfCsvHeaderInvalid(
           parseCsvLine(headerLine, exceptionFactory, rejectUnclosedQuotes),
           expectedHeader,
           exceptionFactory);
@@ -117,14 +117,14 @@ public final class CsvImportUtils {
   }
 
   /**
-   * CSVヘッダが期待するヘッダと完全一致するか検証する。
+   * CSVヘッダが期待するヘッダと一致しない場合に例外をスローする。
    *
    * @param actualHeader アップロードCSVのヘッダ
    * @param expectedHeader 期待するCSVヘッダ
    * @param exceptionFactory エラーメッセージから例外を生成する関数
    * @throws RuntimeException ヘッダの列数、または列名が一致しない場合
    */
-  private static void validateCsvHeader(
+  private static void throwExceptionIfCsvHeaderInvalid(
       String[] actualHeader,
       String[] expectedHeader,
       Function<String, ? extends RuntimeException> exceptionFactory) {

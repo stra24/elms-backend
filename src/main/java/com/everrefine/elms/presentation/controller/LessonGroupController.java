@@ -46,7 +46,8 @@ public class LessonGroupController {
     @ApiResponse(responseCode = "200", description = "作成成功"),
     @ApiResponse(responseCode = "400", description = "バリデーションエラー（タイトルは必須・100文字以内）"),
     @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "403", description = "管理者権限が必要です")
+    @ApiResponse(responseCode = "403", description = "管理者権限が必要です"),
+    @ApiResponse(responseCode = "404", description = "コースが見つかりません")
   })
   @PostMapping
   public LessonGroupDto createLessonGroup(
@@ -96,8 +97,7 @@ public class LessonGroupController {
     @ApiResponse(responseCode = "204", description = "削除成功"),
     @ApiResponse(responseCode = "400", description = "バリデーションエラー"),
     @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "403", description = "管理者権限が必要です"),
-    @ApiResponse(responseCode = "404", description = "レッスングループが見つかりません")
+    @ApiResponse(responseCode = "403", description = "管理者権限が必要です")
   })
   @DeleteMapping("/{lessonGroupId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)

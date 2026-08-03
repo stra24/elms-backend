@@ -24,9 +24,9 @@ public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> r
    * @return 取込用Command
    */
   public static UserImportCommand from(MultipartFile file, UUID currentUserId) {
-    validateCsvFile(file);
+    throwExceptionIfCsvFileInvalid(file);
     List<UserImportRowCommand> rows = readRows(file);
-    validateDuplicateRows(rows);
+    throwExceptionIfRowsDuplicated(rows);
     return new UserImportCommand(currentUserId, rows);
   }
 
@@ -40,16 +40,10 @@ public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> r
   }
 
   /**
-   * 各CSV行を保存用ユーザーに変換する。
-   *
-   * @return 保存用ユーザーリスト
-   */
-  public List<User> toUsers() {
-    return rows.stream().map(UserImportRowCommand::toUser).toList();
-  }
-
-  /**
    * 現在ログイン中ユーザーのみ既存IDを維持して、保存用ユーザーリストを作成する。
+   *
+   * <p>新規ユーザーのIDはアプリケーション側で採番する。一括登録では {@code save()} を経由せず直接INSERTするため、
+   * DB採番に頼らずともIDを確定でき、登録直後からIDを利用できる。
    *
    * @param currentUser 現在ログイン中ユーザー
    * @return 保存用ユーザーリスト
@@ -59,7 +53,9 @@ public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> r
         .map(
             row ->
                 row.toUser(
-                    row.hasEmailAddress(currentUser.emailAddress()) ? currentUser.id() : null))
+                    row.hasEmailAddress(currentUser.emailAddress())
+                        ? currentUser.id()
+                        : UUID.randomUUID()))
         .toList();
   }
 
@@ -73,12 +69,12 @@ public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> r
   }
 
   /**
-   * アップロードされたCSVファイルを検証する。
+   * CSVファイルが不正な場合に例外をスローする。
    *
    * @param file アップロード対象のCSVファイル
    */
-  private static void validateCsvFile(MultipartFile file) {
-    CsvImportUtils.validateCsvFile(
+  private static void throwExceptionIfCsvFileInvalid(MultipartFile file) {
+    CsvImportUtils.throwExceptionIfCsvFileInvalid(
         file == null ? null : file.getOriginalFilename(),
         file == null || file.isEmpty(),
         UserImportCommand::badRequest);
@@ -135,11 +131,11 @@ public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> r
   }
 
   /**
-   * CSV内の重複を検証する。
+   * CSV内にメールアドレスまたはユーザー名の重複がある場合に例外をスローする。
    *
    * @param rows 行Commandのリスト
    */
-  private static void validateDuplicateRows(List<UserImportRowCommand> rows) {
+  private static void throwExceptionIfRowsDuplicated(List<UserImportRowCommand> rows) {
     Set<String> emailAddresses = new HashSet<>();
     Set<String> userNames = new HashSet<>();
 

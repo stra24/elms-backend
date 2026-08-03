@@ -33,6 +33,19 @@ public record LessonGroup(
   }
 
   /**
+   * IDを設定したレッスングループを返す。
+   *
+   * <p>一括登録では {@code save()} を経由せず直接INSERTするため、DB採番に頼らずアプリケーション側でIDを確定できる。
+   * これにより、登録前から子レッスンに紐づけるIDを利用できる。
+   *
+   * @param id レッスングループID
+   * @return IDを設定したレッスングループ
+   */
+  public LessonGroup withId(UUID id) {
+    return new LessonGroup(id, courseId, lessonGroupOrder, title, createdAt, updatedAt);
+  }
+
+  /**
    * レッスングループを更新する。
    *
    * @param title 新しいタイトル

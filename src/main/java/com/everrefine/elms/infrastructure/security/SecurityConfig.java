@@ -1,9 +1,14 @@
 package com.everrefine.elms.infrastructure.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -13,6 +18,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -24,6 +30,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private final JwtFilter jwtFilter;
 
@@ -78,9 +86,31 @@ public class SecurityConfig {
                     .anyRequest()
                     .authenticated() // それ以外の全てのリクエストは認証が必要とする
             )
+        // 未認証は401を返す。既定の Http403ForbiddenEntryPoint のままだと403になってしまうため明示的に設定する。
+        // 認証済みだが権限が足りない場合は、既定の AccessDeniedHandler により403のままとなる。
+        .exceptionHandling(
+            exception -> exception.authenticationEntryPoint(unauthorizedEntryPoint()))
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class); // JWT認証フィルターを追加
 
     return http.build();
+  }
+
+  /**
+   * 未認証時に401とエラーレスポンスを返すエントリーポイントを生成する。
+   *
+   * <p>infrastructure層はpresentation層に依存できないため、{@code ErrorResponse} を参照せずMapで同じ形（code /
+   * message）を組み立てる。
+   *
+   * @return 認証エントリーポイント
+   */
+  private AuthenticationEntryPoint unauthorizedEntryPoint() {
+    return (request, response, authException) -> {
+      response.setStatus(HttpStatus.UNAUTHORIZED.value());
+      response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+      response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+      OBJECT_MAPPER.writeValue(
+          response.getWriter(), Map.of("code", "UNAUTHORIZED", "message", "認証されていません"));
+    };
   }
 
   /**

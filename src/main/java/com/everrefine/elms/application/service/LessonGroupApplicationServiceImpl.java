@@ -5,7 +5,9 @@ import com.everrefine.elms.application.command.LessonGroupUpdateCommand;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonGroupDto;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
+import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
+import com.everrefine.elms.domain.repository.CourseRepository;
 import com.everrefine.elms.domain.repository.LessonGroupRepository;
 import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.domain.service.LessonGroupDomainService;
@@ -23,17 +25,33 @@ public class LessonGroupApplicationServiceImpl implements LessonGroupApplication
 
   private final LessonGroupRepository lessonGroupRepository;
   private final LessonRepository lessonRepository;
+  private final CourseRepository courseRepository;
   private final LessonGroupDomainService lessonGroupDomainService;
 
   @Override
   @Transactional
   public LessonGroupDto createLessonGroup(LessonGroupCreateCommand lessonGroupCreateCommand) {
+    throwExceptionIfCourseNotExists(lessonGroupCreateCommand.courseId());
+
     BigDecimal lessonGroupOrder =
         lessonGroupDomainService.issueLessonGroupOrder(lessonGroupCreateCommand.courseId());
     LessonGroup createdLessonGroup =
         lessonGroupRepository.createLessonGroup(
             lessonGroupCreateCommand.toLessonGroup(lessonGroupOrder));
     return LessonGroupDto.from(createdLessonGroup);
+  }
+
+  /**
+   * コースが存在しない場合に例外をスローする。
+   *
+   * <p>検証しないまま登録すると外部キー制約違反となり、クライアント起因の誤りが500として返ってしまう。
+   *
+   * @param courseId コースID
+   */
+  private void throwExceptionIfCourseNotExists(UUID courseId) {
+    courseRepository
+        .findCourseById(courseId)
+        .orElseThrow(() -> new ResourceNotFoundException(Course.class, String.valueOf(courseId)));
   }
 
   @Override

@@ -56,8 +56,7 @@ public class UserCourseController {
     @ApiResponse(responseCode = "200", description = "取得成功"),
     @ApiResponse(responseCode = "400", description = "バリデーションエラー"),
     @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "404", description = "レッスンまたはユーザーが見つかりません"),
-    @ApiResponse(responseCode = "500", description = "予想外のエラーが発生しました")
+    @ApiResponse(responseCode = "404", description = "レッスンまたはユーザーが見つかりません")
   })
   @GetMapping("/{courseId}/lessons")
   public List<UserLessonGroupDto> findUserLessons(

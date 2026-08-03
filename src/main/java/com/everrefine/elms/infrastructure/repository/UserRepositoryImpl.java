@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.jdbc.core.JdbcAggregateTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Repository;
 public class UserRepositoryImpl implements UserRepository {
 
   private final UserDao userDao;
-  private final JdbcTemplate jdbcTemplate;
+  private final JdbcAggregateTemplate jdbcAggregateTemplate;
 
   @Override
   public List<User> findUsersByIds(List<UUID> userIds) {
@@ -102,66 +102,20 @@ public class UserRepositoryImpl implements UserRepository {
   /**
    * 複数のユーザーを一括登録する。
    *
-   * @param users 登録するユーザーリスト
+   * <p>IDは呼び出し側で採番済みであること。IDが確定していると、Spring Data JDBCが採番結果の問い合わせを行わないため、 JDBCドライバの {@code
+   * reWriteBatchedInserts} が複数レコードを1つのINSERT文にまとめられる。
+   *
+   * @param users 登録するユーザーリスト（IDは採番済み）
    * @return 登録されたユーザーリスト
    */
   @Override
   public List<User> saveAllUsers(List<User> users) {
-    List<User> usersWithIds = users.stream().filter(user -> user.id() != null).toList();
-    List<User> usersWithoutIds = users.stream().filter(user -> user.id() == null).toList();
+    if (users.isEmpty()) {
+      return users;
+    }
 
-    insertUsersWithIds(usersWithIds);
-    insertUsersWithoutIds(usersWithoutIds);
+    jdbcAggregateTemplate.insertAll(users.stream().map(UserEntity::from).toList());
 
     return users;
-  }
-
-  private void insertUsersWithIds(List<User> users) {
-    if (users.isEmpty()) {
-      return;
-    }
-
-    jdbcTemplate.batchUpdate(
-        """
-            INSERT INTO users (id, email_address, password, real_name, user_name, thumbnail_url, user_role, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-        users,
-        users.size(),
-        (ps, user) -> {
-          ps.setObject(1, user.id());
-          ps.setString(2, user.emailAddress().value());
-          ps.setString(3, user.password().value());
-          ps.setString(4, user.realName().value());
-          ps.setString(5, user.userName().value());
-          ps.setString(6, user.thumbnailUrl() != null ? user.thumbnailUrl().value() : null);
-          ps.setString(7, user.userRole().name());
-          ps.setObject(8, user.createdAt());
-          ps.setObject(9, user.updatedAt());
-        });
-  }
-
-  private void insertUsersWithoutIds(List<User> users) {
-    if (users.isEmpty()) {
-      return;
-    }
-
-    jdbcTemplate.batchUpdate(
-        """
-            INSERT INTO users (email_address, password, real_name, user_name, thumbnail_url, user_role, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-        users,
-        users.size(),
-        (ps, user) -> {
-          ps.setString(1, user.emailAddress().value());
-          ps.setString(2, user.password().value());
-          ps.setString(3, user.realName().value());
-          ps.setString(4, user.userName().value());
-          ps.setString(5, user.thumbnailUrl() != null ? user.thumbnailUrl().value() : null);
-          ps.setString(6, user.userRole().name());
-          ps.setObject(7, user.createdAt());
-          ps.setObject(8, user.updatedAt());
-        });
   }
 }

@@ -275,8 +275,8 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   @Transactional
   public UserImportResponseDto importUsersCsv(UserImportCommand userImportCommand) {
     User currentUser = findCurrentUser(userImportCommand);
-    validateCurrentUserIncluded(userImportCommand, currentUser);
-    validateAdminIncluded(userImportCommand);
+    throwExceptionIfCurrentUserNotIncluded(userImportCommand, currentUser);
+    throwExceptionIfAdminNotIncluded(userImportCommand);
     List<User> users = userImportCommand.toUsersKeepingCurrentUserId(currentUser);
 
     userRepository.deleteAllUsers();
@@ -301,12 +301,13 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   }
 
   /**
-   * 現在ログイン中のユーザーがCSVに含まれているか検証する。
+   * CSV内に現在ログイン中のユーザーが含まれていない場合に例外をスローする。
    *
    * @param userImportCommand ユーザー取込用Command
    * @param currentUser 現在ログイン中のユーザー
    */
-  private void validateCurrentUserIncluded(UserImportCommand userImportCommand, User currentUser) {
+  private void throwExceptionIfCurrentUserNotIncluded(
+      UserImportCommand userImportCommand, User currentUser) {
     boolean currentUserExists =
         userImportCommand.rows().stream()
             .anyMatch(row -> row.hasEmailAddress(currentUser.emailAddress()));
@@ -316,11 +317,11 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   }
 
   /**
-   * CSVに管理者ユーザーが含まれているか検証する。
+   * CSV内に管理者ユーザーが1人も含まれていない場合に例外をスローする。
    *
    * @param userImportCommand ユーザー取込用Command
    */
-  private void validateAdminIncluded(UserImportCommand userImportCommand) {
+  private void throwExceptionIfAdminNotIncluded(UserImportCommand userImportCommand) {
     if (!userImportCommand.containsAdmin()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "管理者ユーザーを1人以上含めてください");
     }

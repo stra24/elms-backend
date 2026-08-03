@@ -126,10 +126,35 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   @Override
   @Transactional
   public LessonDto createLesson(LessonCreateCommand lessonCreateCommand) {
+    throwExceptionIfLessonGroupNotBelongsToCourse(
+        lessonCreateCommand.lessonGroupId(), lessonCreateCommand.courseId());
+
     BigDecimal lessonOrder =
         lessonDomainService.issueLessonOrder(lessonCreateCommand.lessonGroupId());
     Lesson createdLesson = lessonRepository.createLesson(lessonCreateCommand.toLesson(lessonOrder));
     return LessonDto.from(createdLesson);
+  }
+
+  /**
+   * レッスングループが存在しない、または指定したコースに属さない場合に例外をスローする。
+   *
+   * <p>検証しないまま登録すると外部キー制約違反となり、クライアント起因の誤りが500として返ってしまう。
+   *
+   * @param lessonGroupId レッスングループID
+   * @param courseId コースID
+   */
+  private void throwExceptionIfLessonGroupNotBelongsToCourse(UUID lessonGroupId, UUID courseId) {
+    LessonGroup lessonGroup =
+        lessonGroupRepository
+            .findLessonGroupById(lessonGroupId)
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        LessonGroup.class, String.valueOf(lessonGroupId)));
+
+    if (!lessonGroup.courseId().equals(courseId)) {
+      throw new ResourceNotFoundException(LessonGroup.class, String.valueOf(lessonGroupId));
+    }
   }
 
   @Override
@@ -217,7 +242,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   @Transactional
   public LessonImportResponseDto importLessonsCsv(LessonImportCommand lessonImportCommand) {
     UUID courseId = lessonImportCommand.courseId();
-    validateCourseExists(courseId);
+    throwExceptionIfCourseNotExists(courseId);
 
     Map<String, List<LessonImportRowCommand>> rowsByLessonGroupTitle =
         lessonImportCommand.getRowsByLessonGroupTitle();
@@ -232,24 +257,35 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
         lessonImportCommand.getImportedLessonCount());
   }
 
+  /**
+   * レッスングループとレッスンを一括登録する。
+   *
+   * <p>レッスングループのIDはアプリケーション側で採番済みのため、登録前に子レッスンへ紐づけられる。
+   * これによりレッスングループを1件ずつINSERTする必要がなく、親子それぞれ1回の一括登録で完結する。
+   *
+   * @param courseId コースID
+   * @param rowsByLessonGroupTitle レッスングループタイトルごとのCSV行
+   */
   private void importLessonGroupsAndLessons(
       UUID courseId, Map<String, List<LessonImportRowCommand>> rowsByLessonGroupTitle) {
+    List<LessonGroup> lessonGroups = new ArrayList<>();
     List<Lesson> lessons = new ArrayList<>();
     int lessonGroupIndex = 0;
     for (List<LessonImportRowCommand> lessonGroupRows : rowsByLessonGroupTitle.values()) {
-      LessonGroup savedLessonGroup = createLessonGroup(courseId, lessonGroupRows, lessonGroupIndex);
-      lessons.addAll(toLessons(courseId, savedLessonGroup.id(), lessonGroupRows));
+      LessonGroup lessonGroup = toLessonGroup(courseId, lessonGroupRows, lessonGroupIndex);
+      lessonGroups.add(lessonGroup);
+      lessons.addAll(toLessons(courseId, lessonGroup.id(), lessonGroupRows));
       lessonGroupIndex++;
     }
 
+    lessonGroupRepository.createLessonGroups(lessonGroups);
     lessonRepository.createLessons(lessons);
   }
 
-  private LessonGroup createLessonGroup(
+  private LessonGroup toLessonGroup(
       UUID courseId, List<LessonImportRowCommand> lessonGroupRows, int lessonGroupIndex) {
     LessonImportRowCommand firstRow = lessonGroupRows.getFirst();
-    return lessonGroupRepository.createLessonGroup(
-        firstRow.toLessonGroup(courseId, LessonImportCommand.calculateOrder(lessonGroupIndex)));
+    return firstRow.toLessonGroup(courseId, LessonImportCommand.calculateOrder(lessonGroupIndex));
   }
 
   private List<Lesson> toLessons(
@@ -264,7 +300,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
     return lessons;
   }
 
-  private void validateCourseExists(UUID courseId) {
+  private void throwExceptionIfCourseNotExists(UUID courseId) {
     courseRepository
         .findCourseById(courseId)
         .orElseThrow(() -> new ResourceNotFoundException(Course.class, String.valueOf(courseId)));

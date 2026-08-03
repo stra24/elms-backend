@@ -49,6 +49,20 @@ public record Lesson(
   }
 
   /**
+   * IDを設定したレッスンを返す。
+   *
+   * <p>一括登録では {@code save()} を経由せず {@code insertAll()} で直接INSERTするため、DB採番に頼らずアプリケーション側でIDを確定できる。
+   * IDが確定していると、JDBCドライバが複数レコードを1つのINSERT文にまとめられる。
+   *
+   * @param id レッスンID
+   * @return IDを設定したレッスン
+   */
+  public Lesson withId(UUID id) {
+    return new Lesson(
+        id, lessonGroupId, courseId, lessonOrder, title, content, videoUrl, createdAt, updatedAt);
+  }
+
+  /**
    * 更新用のレッスンを作成する。
    *
    * @param title レッスンタイトル

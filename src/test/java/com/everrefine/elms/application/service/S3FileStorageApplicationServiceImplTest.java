@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,67 +100,70 @@ class S3FileStorageApplicationServiceImplTest {
         LocalDateTime.now());
   }
 
-  @Test
-  void 正常系_孤立ファイルが削除されること() throws IOException {
-    mockS3Objects("orphan.jpg");
+  @Nested
+  class 孤立ファイル削除 {
+    @Test
+    void 孤立ファイルが削除されること() throws IOException {
+      mockS3Objects("orphan.jpg");
 
-    fileStorageApplicationService.delete();
+      fileStorageApplicationService.delete();
 
-    verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
-  }
+      verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
+    }
 
-  @Test
-  void 正常系_DBに存在するファイルは削除されないこと() throws IOException {
-    mockS3Objects("test.jpg");
-    createUser(S3_PUBLIC_URL + "/test.jpg");
+    @Test
+    void DBに存在するファイルは削除されないこと() throws IOException {
+      mockS3Objects("test.jpg");
+      createUser(S3_PUBLIC_URL + "/test.jpg");
 
-    fileStorageApplicationService.delete();
+      fileStorageApplicationService.delete();
 
-    verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
-  }
+      verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
+    }
 
-  @Test
-  void 正常系_S3バケットにファイルがないとき正常終了すること(CapturedOutput output) throws IOException {
-    mockS3Objects();
+    @Test
+    void S3バケットにファイルがないとき正常終了すること(CapturedOutput output) throws IOException {
+      mockS3Objects();
 
-    fileStorageApplicationService.delete();
+      fileStorageApplicationService.delete();
 
-    assertTrue(output.getOut().contains("S3バケットにファイルがありません。"));
-  }
+      assertTrue(output.getOut().contains("S3バケットにファイルがありません。"));
+    }
 
-  @Test
-  void 正常系_孤立ファイルがないとき削除処理が呼ばれないこと(CapturedOutput output) throws IOException {
-    mockS3Objects("test.jpg");
-    createUser(S3_PUBLIC_URL + "/test.jpg");
+    @Test
+    void 孤立ファイルがないとき削除処理が呼ばれないこと(CapturedOutput output) throws IOException {
+      mockS3Objects("test.jpg");
+      createUser(S3_PUBLIC_URL + "/test.jpg");
 
-    fileStorageApplicationService.delete();
+      fileStorageApplicationService.delete();
 
-    assertTrue(output.getOut().contains("削除対象のファイルは見つかりませんでした。"));
-    verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
-  }
+      assertTrue(output.getOut().contains("削除対象のファイルは見つかりませんでした。"));
+      verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
+    }
 
-  @Test
-  void 異常系_S3削除に失敗したとき警告ログが出力されて正常に終了すること(CapturedOutput output) throws IOException {
-    mockS3Objects("fail.jpg");
-    when(s3Client.deleteObject(any(DeleteObjectRequest.class)))
-        .thenThrow(S3Exception.builder().message("error").build());
+    @Test
+    void S3削除に失敗したとき警告ログが出力されて正常に終了すること(CapturedOutput output) throws IOException {
+      mockS3Objects("fail.jpg");
+      when(s3Client.deleteObject(any(DeleteObjectRequest.class)))
+          .thenThrow(S3Exception.builder().message("error").build());
 
-    fileStorageApplicationService.delete();
+      fileStorageApplicationService.delete();
 
-    assertTrue(output.getOut().contains("未使用ファイルの削除に失敗しました。key: fail.jpg"));
-    assertTrue(output.getOut().contains("1件の削除に失敗しました。"));
-  }
+      assertTrue(output.getOut().contains("未使用ファイルの削除に失敗しました。key: fail.jpg"));
+      assertTrue(output.getOut().contains("1件の削除に失敗しました。"));
+    }
 
-  @Test
-  void 異常系_S3削除に失敗したとき他のファイルは削除されること() throws IOException {
-    mockS3Objects("fail.jpg", "success.jpg");
-    when(s3Client.deleteObject(
-            DeleteObjectRequest.builder().bucket(BUCKET).key("fail.jpg").build()))
-        .thenThrow(S3Exception.builder().message("error").build());
+    @Test
+    void S3削除に失敗したとき他のファイルは削除されること() throws IOException {
+      mockS3Objects("fail.jpg", "success.jpg");
+      when(s3Client.deleteObject(
+              DeleteObjectRequest.builder().bucket(BUCKET).key("fail.jpg").build()))
+          .thenThrow(S3Exception.builder().message("error").build());
 
-    fileStorageApplicationService.delete();
+      fileStorageApplicationService.delete();
 
-    verify(s3Client)
-        .deleteObject(DeleteObjectRequest.builder().bucket(BUCKET).key("success.jpg").build());
+      verify(s3Client)
+          .deleteObject(DeleteObjectRequest.builder().bucket(BUCKET).key("success.jpg").build());
+    }
   }
 }

@@ -124,8 +124,7 @@ public class NewsController {
     @ApiResponse(responseCode = "204", description = "削除成功"),
     @ApiResponse(responseCode = "400", description = "バリデーションエラー"),
     @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "403", description = "管理者権限が必要です"),
-    @ApiResponse(responseCode = "404", description = "お知らせが見つかりません")
+    @ApiResponse(responseCode = "403", description = "管理者権限が必要です")
   })
   @PreAuthorize("hasAuthority('ADMIN')")
   @DeleteMapping("/{newsId}")

@@ -31,7 +31,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(webEnvironment = WebEnvironment.NONE)
 @Testcontainers
 @Transactional
-class LessonGroupApplicationServiceTest {
+class LessonGroupApplicationServiceImplTest {
 
   @Container @ServiceConnection
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17");
@@ -41,8 +41,46 @@ class LessonGroupApplicationServiceTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Nested
-  class 正常系 {
+  class レッスングループ作成 {
+    @Test
+    void レッスングループを作成できること() {
+      // Arrange
+      LocalDateTime now = LocalDateTime.now();
+      jdbcTemplate.update(
+          "INSERT INTO courses (course_order, title, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+          new BigDecimal("1"),
+          "作成用コース",
+          "説明",
+          now,
+          now);
+      UUID courseId =
+          jdbcTemplate.queryForObject(
+              "SELECT id FROM courses WHERE title = ?", UUID.class, "作成用コース");
 
+      LessonGroupCreateRequest request = new LessonGroupCreateRequest("新しいグループ");
+      LessonGroupCreateCommand command = request.toCommand(courseId);
+
+      // Act
+      LessonGroupDto result = lessonGroupApplicationService.createLessonGroup(command);
+
+      // Assert
+      assertNotNull(result.id());
+      assertEquals(courseId, result.courseId());
+      assertNotNull(result.lessonGroupOrder());
+      assertEquals("新しいグループ", result.name());
+      assertNotNull(result.createdAt());
+      assertNotNull(result.updatedAt());
+      assertNull(result.lessons());
+
+      Integer count =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM lesson_groups WHERE id = ?", Integer.class, result.id());
+      assertEquals(1, count);
+    }
+  }
+
+  @Nested
+  class レッスングループ更新 {
     @Test
     void レッスングループを更新できること() {
       // Arrange
@@ -115,41 +153,23 @@ class LessonGroupApplicationServiceTest {
     }
 
     @Test
-    void レッスングループを作成できること() {
+    void 存在しないレッスングループIDの場合ResourceNotFoundExceptionが投げられること() {
       // Arrange
-      LocalDateTime now = LocalDateTime.now();
-      jdbcTemplate.update(
-          "INSERT INTO courses (course_order, title, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-          new BigDecimal("1"),
-          "作成用コース",
-          "説明",
-          now,
-          now);
-      UUID courseId =
-          jdbcTemplate.queryForObject(
-              "SELECT id FROM courses WHERE title = ?", UUID.class, "作成用コース");
+      LessonGroupUpdateRequest request = new LessonGroupUpdateRequest("新しいタイトル");
+      UUID nonExistentId = UUID.randomUUID();
+      LessonGroupUpdateCommand command = request.toCommand(nonExistentId);
 
-      LessonGroupCreateRequest request = new LessonGroupCreateRequest("新しいグループ");
-      LessonGroupCreateCommand command = request.toCommand(courseId);
-
-      // Act
-      LessonGroupDto result = lessonGroupApplicationService.createLessonGroup(command);
-
-      // Assert
-      assertNotNull(result.id());
-      assertEquals(courseId, result.courseId());
-      assertNotNull(result.lessonGroupOrder());
-      assertEquals("新しいグループ", result.name());
-      assertNotNull(result.createdAt());
-      assertNotNull(result.updatedAt());
-      assertNull(result.lessons());
-
-      Integer count =
-          jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM lesson_groups WHERE id = ?", Integer.class, result.id());
-      assertEquals(1, count);
+      // Act & Assert
+      ResourceNotFoundException exception =
+          assertThrows(
+              ResourceNotFoundException.class,
+              () -> lessonGroupApplicationService.updateLessonGroup(command));
+      assertEquals("LessonGroup が見つかりませんでした。id = " + nonExistentId, exception.getMessage());
     }
+  }
 
+  @Nested
+  class レッスングループ削除 {
     @Test
     void レッスングループを削除できること() {
       // Arrange
@@ -193,25 +213,6 @@ class LessonGroupApplicationServiceTest {
       lessonGroupApplicationService.deleteLessonGroupById(UUID.randomUUID());
 
       // Assert
-    }
-  }
-
-  @Nested
-  class 異常系 {
-
-    @Test
-    void 存在しないレッスングループIDの場合ResourceNotFoundExceptionがスローされること() {
-      // Arrange
-      LessonGroupUpdateRequest request = new LessonGroupUpdateRequest("新しいタイトル");
-      UUID nonExistentId = UUID.randomUUID();
-      LessonGroupUpdateCommand command = request.toCommand(nonExistentId);
-
-      // Act & Assert
-      ResourceNotFoundException exception =
-          assertThrows(
-              ResourceNotFoundException.class,
-              () -> lessonGroupApplicationService.updateLessonGroup(command));
-      assertEquals("LessonGroup が見つかりませんでした。id = " + nonExistentId, exception.getMessage());
     }
   }
 }

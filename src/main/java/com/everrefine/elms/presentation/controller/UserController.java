@@ -141,7 +141,8 @@ public class UserController {
     @ApiResponse(responseCode = "200", description = "取込成功"),
     @ApiResponse(responseCode = "400", description = "バリデーションエラー"),
     @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "403", description = "管理者権限が必要です")
+    @ApiResponse(responseCode = "403", description = "管理者権限が必要です"),
+    @ApiResponse(responseCode = "404", description = "現在ログイン中のユーザーが見つかりません")
   })
   @PreAuthorize("hasAuthority('ADMIN')")
   @PostMapping("/import")
@@ -185,8 +186,7 @@ public class UserController {
     @ApiResponse(responseCode = "200", description = "変更成功"),
     @ApiResponse(responseCode = "400", description = "パスワードが一致しません"),
     @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "404", description = "ユーザーが存在しません"),
-    @ApiResponse(responseCode = "500", description = "サーバーで想定外のエラーが起きました")
+    @ApiResponse(responseCode = "404", description = "ユーザーが存在しません")
   })
   @PutMapping("/password")
   public void updatePassword(@RequestBody @Valid PasswordUpdateRequest passwordUpdateRequest) {
@@ -204,8 +204,7 @@ public class UserController {
     @ApiResponse(responseCode = "204", description = "削除成功"),
     @ApiResponse(responseCode = "400", description = "バリデーションエラー"),
     @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "403", description = "管理者権限が必要です"),
-    @ApiResponse(responseCode = "404", description = "ユーザーが見つかりません")
+    @ApiResponse(responseCode = "403", description = "管理者権限が必要です")
   })
   @PreAuthorize("hasAuthority('ADMIN')")
   @DeleteMapping("/{userId}")

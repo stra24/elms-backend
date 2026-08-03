@@ -98,8 +98,7 @@ public class CourseController {
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "取得成功"),
     @ApiResponse(responseCode = "400", description = "バリデーションエラー"),
-    @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "404", description = "コースが見つかりません")
+    @ApiResponse(responseCode = "401", description = "認証されていません")
   })
   @GetMapping("/{courseId}/lessons")
   public CourseLessonsDto findLessonsGroupedByLessonGroup(@PathVariable UUID courseId) {
@@ -211,8 +210,7 @@ public class CourseController {
     @ApiResponse(responseCode = "204", description = "削除成功"),
     @ApiResponse(responseCode = "400", description = "バリデーションエラー"),
     @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "403", description = "管理者権限が必要です"),
-    @ApiResponse(responseCode = "404", description = "コースが見つかりません")
+    @ApiResponse(responseCode = "403", description = "管理者権限が必要です")
   })
   @PreAuthorize("hasAuthority('ADMIN')")
   @DeleteMapping("/{courseId}")

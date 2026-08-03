@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.everrefine.elms.domain.model.user.UserRole;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
@@ -17,84 +18,90 @@ class UserImportCommandTest {
 
   private static final String HEADER = "権限,氏名,メールアドレス,ユーザー名";
 
-  @Test
-  void 正常系_BOM付きCSVとクォート付きカンマを読み込めること() {
-    String csv =
-        "\uFEFF" + String.join("\n", HEADER, "一般,\"テスト, 太郎\",test@example.com,\"user,name\"");
-    MultipartFile file = csvFile("users.csv", csv);
-
-    UserImportCommand command = UserImportCommand.from(file, UUID.randomUUID());
-
-    assertEquals(1, command.getImportCount());
-    UserImportRowCommand row = command.rows().get(0);
-    assertEquals(UserRole.GENERAL, row.userRole());
-    assertEquals("テスト, 太郎", row.realName());
-    assertEquals("test@example.com", row.emailAddress());
-    assertEquals("user,name", row.userName());
-  }
-
-  @Test
-  void 正常系_ヘッダのみCSVはCommand生成上は許容されること() {
-    MultipartFile file = csvFile("users.csv", HEADER);
-
-    UserImportCommand command = UserImportCommand.from(file, UUID.randomUUID());
-
-    assertEquals(0, command.getImportCount());
-  }
-
-  @Test
-  void 異常系_CSVファイル形式が不正な場合はResponseStatusExceptionになること() {
-    MultipartFile file = csvFile("users.txt", "test content");
-
-    ResponseStatusException exception =
-        assertThrows(
-            ResponseStatusException.class, () -> UserImportCommand.from(file, UUID.randomUUID()));
-
-    assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-    assertEquals("CSVファイル形式が不正です", exception.getReason());
-  }
-
-  @Test
-  void 異常系_ヘッダ不正時のreasonが維持されること() {
-    String csv = String.join("\n", "不正ヘッダ,氏名,メールアドレス,ユーザー名", "一般,山田太郎,t@example.com,taro");
-    MultipartFile file = csvFile("users.csv", csv);
-
-    ResponseStatusException exception =
-        assertThrows(
-            ResponseStatusException.class, () -> UserImportCommand.from(file, UUID.randomUUID()));
-
-    assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-    assertEquals("CSVヘッダが不正です", exception.getReason());
-  }
-
-  @Test
-  void 異常系_空行を挟んでも物理行番号でエラーになること() {
-    String csv = String.join("\n", HEADER, "", "一般,,t@example.com,taro");
-    MultipartFile file = csvFile("users.csv", csv);
-
-    ResponseStatusException exception =
-        assertThrows(
-            ResponseStatusException.class, () -> UserImportCommand.from(file, UUID.randomUUID()));
-
-    assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-    assertEquals("行3: 必須項目が入力されていません", exception.getReason());
-  }
-
-  @Test
-  void 異常系_未クローズクォートは列数不正になること() {
-    String csv = String.join("\n", HEADER, "一般,\"山田太郎,t@example.com,taro");
-    MultipartFile file = csvFile("users.csv", csv);
-
-    ResponseStatusException exception =
-        assertThrows(
-            ResponseStatusException.class, () -> UserImportCommand.from(file, UUID.randomUUID()));
-
-    assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-    assertEquals("行2: 列数が不正です", exception.getReason());
-  }
-
   private static MultipartFile csvFile(String filename, String content) {
     return new MockMultipartFile(
         "file", filename, "text/csv", content.getBytes(StandardCharsets.UTF_8));
+  }
+
+  @Nested
+  class CSV読み込み {
+    @Test
+    void BOM付きCSVとクォート付きカンマを読み込めること() {
+      String csv =
+          "\uFEFF" + String.join("\n", HEADER, "一般,\"テスト, 太郎\",test@example.com,\"user,name\"");
+      MultipartFile file = csvFile("users.csv", csv);
+
+      UserImportCommand command = UserImportCommand.from(file, UUID.randomUUID());
+
+      assertEquals(1, command.getImportCount());
+      UserImportRowCommand row = command.rows().get(0);
+      assertEquals(UserRole.GENERAL, row.userRole());
+      assertEquals("テスト, 太郎", row.realName());
+      assertEquals("test@example.com", row.emailAddress());
+      assertEquals("user,name", row.userName());
+    }
+
+    @Test
+    void ヘッダのみCSVはCommand生成上は許容されること() {
+      MultipartFile file = csvFile("users.csv", HEADER);
+
+      UserImportCommand command = UserImportCommand.from(file, UUID.randomUUID());
+
+      assertEquals(0, command.getImportCount());
+    }
+  }
+
+  @Nested
+  class CSVバリデーション {
+    @Test
+    void CSVファイル形式が不正な場合ResponseStatusExceptionが投げられること() {
+      MultipartFile file = csvFile("users.txt", "test content");
+
+      ResponseStatusException exception =
+          assertThrows(
+              ResponseStatusException.class, () -> UserImportCommand.from(file, UUID.randomUUID()));
+
+      assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+      assertEquals("CSVファイル形式が不正です", exception.getReason());
+    }
+
+    @Test
+    void ヘッダ不正時はreasonが維持されたResponseStatusExceptionが投げられること() {
+      String csv = String.join("\n", "不正ヘッダ,氏名,メールアドレス,ユーザー名", "一般,山田太郎,t@example.com,taro");
+      MultipartFile file = csvFile("users.csv", csv);
+
+      ResponseStatusException exception =
+          assertThrows(
+              ResponseStatusException.class, () -> UserImportCommand.from(file, UUID.randomUUID()));
+
+      assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+      assertEquals("CSVヘッダが不正です", exception.getReason());
+    }
+
+    @Test
+    void 空行を挟んでも物理行番号を示すResponseStatusExceptionが投げられること() {
+      String csv = String.join("\n", HEADER, "", "一般,,t@example.com,taro");
+      MultipartFile file = csvFile("users.csv", csv);
+
+      ResponseStatusException exception =
+          assertThrows(
+              ResponseStatusException.class, () -> UserImportCommand.from(file, UUID.randomUUID()));
+
+      assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+      assertEquals("行3: 必須項目が入力されていません", exception.getReason());
+    }
+
+    @Test
+    void 未クローズクォートは列数不正のResponseStatusExceptionが投げられること() {
+      String csv = String.join("\n", HEADER, "一般,\"山田太郎,t@example.com,taro");
+      MultipartFile file = csvFile("users.csv", csv);
+
+      ResponseStatusException exception =
+          assertThrows(
+              ResponseStatusException.class, () -> UserImportCommand.from(file, UUID.randomUUID()));
+
+      assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+      assertEquals("行2: 列数が不正です", exception.getReason());
+    }
   }
 }

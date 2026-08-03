@@ -406,6 +406,38 @@ flowchart TB
 
 https://qiita.com/KeithYokoma/items/2193cf79ba76563e3db6
 
+#### 検査して例外をスローするメソッド
+
+戻り値がなく、条件を満たさない場合に例外をスローするメソッドは `throwExceptionIf〜` とします。
+
+**例外が飛ぶ「異常条件」を名前にする**のがポイントです。`validate〜` だと何が起きるかが読み取れず、`throwExceptionIf` の後ろに正常条件を置くと意味が逆になってしまいます。
+
+| ✅ 良い例 | ❌ 悪い例 | 理由 |
+|---|---|---|
+| `throwExceptionIfCourseNotExists` | `validateCourseExists` | 呼び出し側で「何が起きるか」が分からない |
+| `throwExceptionIfCourseNotExists` | `throwExceptionIfCourseExists` | 「存在したら例外」という逆の意味になる |
+| `throwExceptionIfAdminNotIncluded` | `validateAdminIncluded` | 同上 |
+| `throwExceptionIfCsvFileInvalid` | `validateCsvFile` | 同上 |
+
+Javadoc も「〜の場合に例外をスローする。」で揃えます。
+
+```java
+/**
+ * コースが存在しない場合に例外をスローする。
+ *
+ * <p>検証しないまま登録すると外部キー制約違反となり、クライアント起因の誤りが500として返ってしまう。
+ *
+ * @param courseId コースID
+ */
+private void throwExceptionIfCourseNotExists(UUID courseId) {
+  courseRepository
+      .findCourseById(courseId)
+      .orElseThrow(() -> new ResourceNotFoundException(Course.class, String.valueOf(courseId)));
+}
+```
+
+なお、値を返しつつ見つからなければ例外をスローするメソッドは `〜OrThrow` とします（例: `findLessonOrThrow`）。
+
 ## プロジェクト構成
 
 ```
@@ -472,3 +504,46 @@ http://localhost:8025
 ```
 
 テストは Testcontainers で PostgreSQL コンテナを自動起動して実行します（Docker が必要です）。
+
+### テストの書き方
+
+#### クラス名・構造
+
+- テストクラス名は **実装クラス名 + `Test`**（例: `UserApplicationServiceImpl` → `UserApplicationServiceImplTest`）
+- パッケージは実装クラスと同じ構成にする
+- `@Nested` で**操作単位**に分ける。クラス名は日本語で `〜取得` / `〜作成` / `〜更新` / `〜削除` のようにする
+- **`正常系` / `異常系` で分けない**。同じ操作の成功ケースと失敗ケースは同じ `@Nested` にまとめる
+
+#### メソッド名
+
+- `正常系_` / `異常系_` の接頭辞は付けない
+- 「〜であること」「〜が返ること」の形で書く
+- 例外を検証する場合は**例外クラス名を含める**（`〜Exception が投げられること`）
+- **数字で始めない**（Java の識別子として不正になる。`2つのレッスンの間に…` ではなく `指定した2つのレッスンの間に…`）
+
+```java
+@Nested
+class レッスン取得 {
+
+  @Test
+  void レッスンをIDで取得できること() { ... }
+
+  @Test
+  void 存在しないレッスンIDでResourceNotFoundExceptionが投げられること() { ... }
+}
+```
+
+#### テストデータと検証
+
+- **前提データの作成**は `testsupport.TestDataFactory` を使う（生SQLはこのクラスに集約する）
+  - テスト対象のサービスやリポジトリで前提データを作らない。テスト対象が壊れているとき「検証の失敗」ではなく「準備中のエラー」になり、原因が分からなくなるため
+- **検証（assert）は生SQL（`JdbcTemplate`）で行う**
+  - DAO やリポジトリ経由で検証すると、マッピングが誤っていても「間違ったまま書いて、間違ったまま読む」ため気付けない
+  - 検証用SQLは `TestDataFactory` に集約せず、各テストメソッドに残す
+
+#### HTTPステータスの検証
+
+コントローラーの `@ApiResponse` と実際のレスポンスが食い違わないよう、`GlobalExceptionHandlerTest` で
+**例外ハンドラを通った後の実際のHTTPステータス**を検証しています。サービス層の例外型だけを見ると、
+`@ExceptionHandler(Exception.class)` の catch-all に飲み込まれて500になっていても気付けません。
+例外ハンドリングを変更したときは、このテストが通ることを確認してください。

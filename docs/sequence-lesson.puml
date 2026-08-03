@@ -42,20 +42,35 @@ Client -> LGController : POST /api/courses/{courseId}/lesson-groups\n{ title }
 
 LGController -> LGAppService : createLessonGroup(LessonGroupCreateCommand)
 
-LGAppService -> LGDomainService : issueLessonGroupOrder(courseId)
-LGDomainService -> LGRepo : 当該コースの最大lessonGroupOrderを取得
-LGRepo -> DB : SELECT MAX(lesson_group_order) WHERE course_id = ?
-DB --> LGRepo : maxOrder
-LGRepo --> LGDomainService : maxOrder
-LGDomainService --> LGAppService : 新しいOrder（末尾に追加）
+LGAppService -> CourseRepo : findCourseById(courseId)
+CourseRepo -> DB : SELECT FROM courses WHERE id = ?
+DB --> CourseRepo : Optional<Course>
 
-LGAppService -> LGRepo : createLessonGroup(LessonGroup.create(..., order))
-LGRepo -> DB : INSERT INTO lesson_groups
-DB --> LGRepo : 作成されたLessonGroup
-LGRepo --> LGAppService : LessonGroup
+alt コースが存在しない
+  LGAppService --> LGController : ResourceNotFoundException
+  LGController --> Client : 404 Not Found
+  note right of LGAppService
+    存在チェックをしないまま登録すると外部キー制約違反となり、
+    クライアント起因の誤りが500として返ってしまうため、事前に検証する。
+  end note
+else コースが存在する
+  CourseRepo --> LGAppService : Course
 
-LGAppService --> LGController : LessonGroupDto
-LGController --> Client : 200 OK { id, courseId, lessonGroupOrder, name, ... }
+  LGAppService -> LGDomainService : issueLessonGroupOrder(courseId)
+  LGDomainService -> LGRepo : 当該コースの最大lessonGroupOrderを取得
+  LGRepo -> DB : SELECT MAX(lesson_group_order) WHERE course_id = ?
+  DB --> LGRepo : maxOrder
+  LGRepo --> LGDomainService : maxOrder
+  LGDomainService --> LGAppService : 新しいOrder（末尾に追加）
+
+  LGAppService -> LGRepo : createLessonGroup(LessonGroup.create(..., order))
+  LGRepo -> DB : INSERT INTO lesson_groups
+  DB --> LGRepo : 作成されたLessonGroup
+  LGRepo --> LGAppService : LessonGroup
+
+  LGAppService --> LGController : LessonGroupDto
+  LGController --> Client : 200 OK { id, courseId, lessonGroupOrder, name, ... }
+end
 
 ' ============================================================
 ' レッスングループ更新
@@ -175,20 +190,35 @@ Client -> LController : POST /api/courses/{courseId}/lesson-groups/{lessonGroupI
 
 LController -> LAppService : createLesson(LessonCreateCommand)
 
-LAppService -> LDomainService : issueLessonOrder(lessonGroupId)
-LDomainService -> LRepo : 当該レッスングループの最大lessonOrderを取得
-LRepo -> DB : SELECT MAX(lesson_order) WHERE lesson_group_id = ?
-DB --> LRepo : maxOrder
-LRepo --> LDomainService : maxOrder
-LDomainService --> LAppService : 新しいOrder（末尾に追加）
+LAppService -> LGRepo : findLessonGroupById(lessonGroupId)
+LGRepo -> DB : SELECT FROM lesson_groups WHERE id = ?
+DB --> LGRepo : Optional<LessonGroup>
 
-LAppService -> LRepo : createLesson(Lesson.create(..., order))
-LRepo -> DB : INSERT INTO lessons
-DB --> LRepo : 作成されたLesson
-LRepo --> LAppService : Lesson
+alt レッスングループが存在しない、またはパスのコースに属さない
+  LAppService --> LController : ResourceNotFoundException
+  LController --> Client : 404 Not Found
+  note right of LAppService
+    存在チェックをしないまま登録すると外部キー制約違反となり、
+    クライアント起因の誤りが500として返ってしまうため、事前に検証する。
+  end note
+else レッスングループが存在し、パスのコースに属する
+  LGRepo --> LAppService : LessonGroup
 
-LAppService --> LController : LessonDto
-LController --> Client : 200 OK { id, title, lessonOrder, ... }
+  LAppService -> LDomainService : issueLessonOrder(lessonGroupId)
+  LDomainService -> LRepo : 当該レッスングループの最大lessonOrderを取得
+  LRepo -> DB : SELECT MAX(lesson_order) WHERE lesson_group_id = ?
+  DB --> LRepo : maxOrder
+  LRepo --> LDomainService : maxOrder
+  LDomainService --> LAppService : 新しいOrder（末尾に追加）
+
+  LAppService -> LRepo : createLesson(Lesson.create(..., order))
+  LRepo -> DB : INSERT INTO lessons
+  DB --> LRepo : 作成されたLesson
+  LRepo --> LAppService : Lesson
+
+  LAppService --> LController : LessonDto
+  LController --> Client : 200 OK { id, title, lessonOrder, ... }
+end
 
 ' ============================================================
 ' レッスン更新
@@ -334,11 +364,16 @@ else コースが存在する
   LGRepo -> DB : DELETE FROM lesson_groups WHERE course_id = ?
   DB --> LGRepo : ok
 
-  loop 各レッスングループ（CSV初出順に order 採番）
-    LAppService -> LGRepo : createLessonGroup(...)
-    LGRepo -> DB : INSERT INTO lesson_groups
-    DB --> LGRepo : 生成された LessonGroup
-  end
+  LAppService -> LAppService : レッスングループとレッスンを生成\n（CSV初出順に order 採番。IDはアプリ側で採番する）
+  note right of LAppService
+    IDをアプリ側で採番するため、登録前に親のIDが確定する。
+    そのためレッスングループを1件ずつINSERTして採番結果を待つ必要がなく、
+    親子それぞれ1回の一括登録で完結する。
+  end note
+
+  LAppService -> LGRepo : createLessonGroups(lessonGroups)
+  LGRepo -> DB : INSERT INTO lesson_groups（一括）
+  DB --> LGRepo : ok
   LAppService -> LRepo : createLessons(lessons)（グループ内順に order 採番）
   LRepo -> DB : INSERT INTO lessons（一括）
   DB --> LRepo : ok

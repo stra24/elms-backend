@@ -22,7 +22,9 @@ public record UserImportRowCommand(
   /**
    * 保存用ユーザーを作成する。
    *
-   * @param id ユーザーID（null の場合はDB採番）
+   * <p>一括登録では {@code save()} を経由せず直接INSERTするため、IDは呼び出し側で採番して渡すこと。
+   *
+   * @param id ユーザーID
    * @return 保存用ユーザー
    */
   public User toUser(UUID id) {
@@ -37,15 +39,6 @@ public record UserImportRowCommand(
         userRole,
         now,
         now);
-  }
-
-  /**
-   * 保存用ユーザーをDB採番IDで作成する。
-   *
-   * @return 保存用ユーザー
-   */
-  public User toUser() {
-    return toUser(null);
   }
 
   /**

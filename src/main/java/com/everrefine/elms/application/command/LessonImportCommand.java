@@ -44,7 +44,7 @@ public record LessonImportCommand(UUID courseId, List<LessonImportRowCommand> ro
    * @return 取込用Command
    */
   public static LessonImportCommand from(UUID courseId, String filename, byte[] fileContent) {
-    validateCsvFile(filename, fileContent);
+    throwExceptionIfCsvFileInvalid(filename, fileContent);
     List<LessonImportRowCommand> rows = readRows(fileContent);
     if (rows.isEmpty()) {
       throw new BadRequestException("取り込み対象のレッスンがありません");
@@ -94,13 +94,13 @@ public record LessonImportCommand(UUID courseId, List<LessonImportRowCommand> ro
   }
 
   /**
-   * アップロードされたCSVファイルを検証する。
+   * CSVファイルが不正な場合に例外をスローする。
    *
    * @param filename アップロードファイル名
    * @param fileContent アップロードファイル内容
    */
-  private static void validateCsvFile(String filename, byte[] fileContent) {
-    CsvImportUtils.validateCsvFile(
+  private static void throwExceptionIfCsvFileInvalid(String filename, byte[] fileContent) {
+    CsvImportUtils.throwExceptionIfCsvFileInvalid(
         filename, fileContent == null || fileContent.length == 0, BadRequestException::new);
   }
 

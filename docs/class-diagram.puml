@@ -20,6 +20,9 @@ class ThumbnailUrl <<ValueObject>> {
 
 class Order <<ValueObject>> {
   - value : BigDecimal
+  --
+  + {static} getFirst() : Order
+  + getNext() : Order
 }
 
 ' ===== user パッケージ =====
@@ -37,6 +40,7 @@ package "user" {
     --
     + {static} create(...) : User
     + update(...) : User
+    + isCurrentPasswordMatch(raw) : boolean
   }
 
   enum UserRole {
@@ -62,6 +66,7 @@ package "user" {
     - value : String
     --
     + {static} encryptAndCreate(raw) : Password
+    + matches(raw) : boolean
   }
 
   class RealName <<ValueObject>> {
@@ -70,6 +75,13 @@ package "user" {
 
   class UserName <<ValueObject>> {
     - value : String
+  }
+
+  class ProgressRate <<ValueObject>> {
+    - value : BigDecimal
+    --
+    + {static} of(completedCnt, allCnt) : ProgressRate
+    + toBigDecimal() : BigDecimal
   }
 }
 
@@ -108,6 +120,7 @@ package "lesson" {
     - updatedAt : LocalDateTime
     --
     + {static} create(...) : LessonGroup
+    + withId(id) : LessonGroup
     + update(title) : LessonGroup
   }
 
@@ -123,6 +136,7 @@ package "lesson" {
     - updatedAt : LocalDateTime
     --
     + {static} create(...) : Lesson
+    + withId(id) : Lesson
     + update(...) : Lesson
     + updateOrder(newOrder) : Lesson
   }
@@ -174,12 +188,29 @@ package "news" {
   }
 }
 
+' ===== passwordreset パッケージ =====
+package "passwordreset" {
+  class PasswordResetToken <<AggregateRoot>> {
+    - id : UUID
+    - userId : UUID
+    - token : String
+    - expiresAt : LocalDateTime
+    - usedAt : LocalDateTime
+    --
+    + {static} create(userId, token, expiresAt) : PasswordResetToken
+    + isExpired() : boolean
+    + isUsed() : boolean
+    + markAsUsed() : PasswordResetToken
+  }
+}
+
 ' ===== 集約ルート間の関連（外部キーIDによる参照） =====
-User "1" --> "0..1" UserLoginHistory : userId
+User "1" --> "0..*" UserLoginHistory : userId
 User "1" --> "0..*" UserLesson : userId
-Course "1" --> "1..*" LessonGroup : courseId
+Course "1" --> "0..*" LessonGroup : courseId
 LessonGroup "1" --> "0..*" Lesson : lessonGroupId
 Lesson "1" --> "0..*" UserLesson : lessonId
+User "1" --> "0..*" PasswordResetToken : userId
 
 ' ===== 値オブジェクトの構成（各集約内） =====
 User *-- EmailAddress

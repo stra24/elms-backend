@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.jdbc.core.JdbcAggregateTemplate;
 import org.springframework.stereotype.Repository;
 
 /** {@link LessonRepository} の実装。 */
@@ -26,7 +26,7 @@ public class LessonRepositoryImpl implements LessonRepository {
 
   private final LessonDao lessonDao;
   private final LessonGroupDao lessonGroupDao;
-  private final JdbcTemplate jdbcTemplate;
+  private final JdbcAggregateTemplate jdbcAggregateTemplate;
 
   @Override
   public Optional<Lesson> findById(UUID lessonId) {
@@ -93,29 +93,21 @@ public class LessonRepositoryImpl implements LessonRepository {
     return lessonDao.save(LessonEntity.from(lesson)).toDomain();
   }
 
+  /**
+   * 複数のレッスンを一括登録する。
+   *
+   * <p>IDは呼び出し側で採番済みであること。IDが確定していると、Spring Data JDBCが採番結果の問い合わせを行わないため、 JDBCドライバの {@code
+   * reWriteBatchedInserts} が複数レコードを1つのINSERT文にまとめられる。
+   *
+   * @param lessons 登録するレッスンリスト（IDは採番済み）
+   */
   @Override
   public void createLessons(List<Lesson> lessons) {
     if (lessons.isEmpty()) {
       return;
     }
 
-    jdbcTemplate.batchUpdate(
-        """
-            INSERT INTO lessons (lesson_group_id, course_id, lesson_order, title, content, video_url, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-        lessons,
-        lessons.size(),
-        (ps, lesson) -> {
-          ps.setObject(1, lesson.lessonGroupId());
-          ps.setObject(2, lesson.courseId());
-          ps.setBigDecimal(3, lesson.lessonOrder().value());
-          ps.setString(4, lesson.title().value());
-          ps.setString(5, lesson.content() != null ? lesson.content().value() : null);
-          ps.setString(6, lesson.videoUrl() != null ? lesson.videoUrl().value() : null);
-          ps.setObject(7, lesson.createdAt());
-          ps.setObject(8, lesson.updatedAt());
-        });
+    jdbcAggregateTemplate.insertAll(lessons.stream().map(LessonEntity::from).toList());
   }
 
   @Override

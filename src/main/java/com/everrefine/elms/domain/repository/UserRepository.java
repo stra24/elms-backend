@@ -94,7 +94,9 @@ public interface UserRepository {
   /**
    * 複数のユーザーを一括登録する。
    *
-   * @param users 登録するユーザーリスト
+   * <p>IDは呼び出し側で採番済みであること。
+   *
+   * @param users 登録するユーザーリスト（IDは採番済み）
    * @return 登録されたユーザーリスト
    */
   List<User> saveAllUsers(List<User> users);

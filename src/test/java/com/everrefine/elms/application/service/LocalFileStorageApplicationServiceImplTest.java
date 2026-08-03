@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @Transactional
 @ExtendWith(OutputCaptureExtension.class)
-class FileStorageApplicationServiceTest {
+class LocalFileStorageApplicationServiceImplTest {
 
   @Container @ServiceConnection
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17");
@@ -94,40 +95,43 @@ class FileStorageApplicationServiceTest {
         LocalDateTime.now());
   }
 
-  @Test
-  void 正常系_孤立ファイルが削除されること() throws IOException {
-    createFile("orphan.jpg");
+  @Nested
+  class 孤立ファイル削除 {
+    @Test
+    void 孤立ファイルが削除されること() throws IOException {
+      createFile("orphan.jpg");
 
-    fileStorageApplicationService.delete();
+      fileStorageApplicationService.delete();
 
-    assertFalse(Files.exists(uploadDir.resolve("orphan.jpg")));
-  }
+      assertFalse(Files.exists(uploadDir.resolve("orphan.jpg")));
+    }
 
-  @Test
-  void 正常系_DBに存在するファイルは削除されないこと() throws IOException {
-    createFile("test.jpg");
-    createUser("/uploads/test.jpg");
+    @Test
+    void DBに存在するファイルは削除されないこと() throws IOException {
+      createFile("test.jpg");
+      createUser("/uploads/test.jpg");
 
-    fileStorageApplicationService.delete();
+      fileStorageApplicationService.delete();
 
-    assertTrue(Files.exists(uploadDir.resolve("test.jpg")));
-  }
+      assertTrue(Files.exists(uploadDir.resolve("test.jpg")));
+    }
 
-  @Test
-  void 正常系_アップロードディレクトリが空のとき正常終了すること(CapturedOutput output) throws IOException {
-    fileStorageApplicationService.delete();
+    @Test
+    void アップロードディレクトリが空のとき正常終了すること(CapturedOutput output) throws IOException {
+      fileStorageApplicationService.delete();
 
-    assertTrue(output.getOut().contains("削除対象のファイルは見つかりませんでした。"));
-  }
+      assertTrue(output.getOut().contains("削除対象のファイルは見つかりませんでした。"));
+    }
 
-  @Test
-  void 正常系_孤立ファイルがないとき削除されないこと(CapturedOutput output) throws IOException {
-    createFile("test.jpg");
-    createUser("/uploads/test.jpg");
+    @Test
+    void 孤立ファイルがないとき削除されないこと(CapturedOutput output) throws IOException {
+      createFile("test.jpg");
+      createUser("/uploads/test.jpg");
 
-    fileStorageApplicationService.delete();
+      fileStorageApplicationService.delete();
 
-    assertTrue(output.getOut().contains("削除対象のファイルは見つかりませんでした。"));
-    assertTrue(Files.exists(uploadDir.resolve("test.jpg")));
+      assertTrue(output.getOut().contains("削除対象のファイルは見つかりませんでした。"));
+      assertTrue(Files.exists(uploadDir.resolve("test.jpg")));
+    }
   }
 }
