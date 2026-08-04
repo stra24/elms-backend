@@ -56,3 +56,8 @@ mail:
 
 password-reset:
   base-url: ${BASE_URL}
+
+# CORSで許可するオリジン（カンマ区切りで複数指定可）。
+# デフォルト値を置かないため、未設定なら起動時に失敗する。気付かないまま緩い設定で動くのを防ぐ。
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}

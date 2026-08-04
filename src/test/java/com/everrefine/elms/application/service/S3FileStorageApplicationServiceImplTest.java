@@ -50,7 +50,8 @@ import software.amazon.awssdk.services.s3.model.S3Object;
       "cloud.aws.s3.endpoint=http://localhost:4566",
       "AWS_ACCESS_KEY_ID=test",
       "AWS_SECRET_ACCESS_KEY=test",
-      "BASE_URL=http://localhost:3000"
+      "BASE_URL=http://localhost:3000",
+      "CORS_ALLOWED_ORIGINS=http://localhost:3000"
     })
 @Testcontainers
 @Transactional

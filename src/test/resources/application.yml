@@ -15,3 +15,7 @@ mail:
 
 password-reset:
   base-url: http://localhost:3000
+
+# CORSで許可するオリジン（本体の application.yml はテストでは読まれないため、ここにも定義が必要）
+cors:
+  allowed-origins: http://localhost:3000

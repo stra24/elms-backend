@@ -35,8 +35,13 @@ public class SecurityConfig {
 
   private final JwtFilter jwtFilter;
 
-  @Value("${BASE_URL:http://localhost:3000}")
-  private String baseUrl;
+  /**
+   * CORSで許可するオリジン。カンマ区切りで複数指定できる。
+   *
+   * <p>メール本文のリンクに使う {@code BASE_URL} とは用途が異なるため、変数を分けている。 兼用すると片方の都合でもう片方が壊れ、設定ミスにも気付きにくくなる。
+   */
+  @Value("${cors.allowed-origins}")
+  private List<String> allowedOrigins;
 
   /**
    * SecurityConfigのコンストラクタ。
@@ -134,7 +139,7 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("http://localhost:3000", baseUrl));
+    config.setAllowedOrigins(allowedOrigins);
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
     config.setAllowCredentials(true); // ← クッキーを使うなら true
