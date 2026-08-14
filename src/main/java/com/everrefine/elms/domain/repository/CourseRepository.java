@@ -40,6 +40,14 @@ public interface CourseRepository {
   Optional<Course> findCourseById(UUID id);
 
   /**
+   * 表示順でコースを取得する。
+   *
+   * @param courseOrder コースの表示順
+   * @return コース（存在しない場合は空）
+   */
+  Optional<Course> findCourseByCourseOrder(Order courseOrder);
+
+  /**
    * ページングしてコース一覧を取得する。
    *
    * @param pagerForRequest ページング情報

@@ -2,6 +2,7 @@ package com.everrefine.elms.domain.repository;
 
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.User;
+import com.everrefine.elms.domain.model.user.UserName;
 import com.everrefine.elms.domain.model.user.UserSearchCondition;
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +42,14 @@ public interface UserRepository {
    * @return ユーザー（存在しない場合は空）
    */
   Optional<User> findUserByEmailAddress(EmailAddress emailAddress);
+
+  /**
+   * ユーザー名でユーザーを取得する。
+   *
+   * @param userName ユーザー名
+   * @return ユーザー（存在しない場合は空）
+   */
+  Optional<User> findUserByUserName(UserName userName);
 
   /**
    * 検索条件に合致するユーザー数を取得する。

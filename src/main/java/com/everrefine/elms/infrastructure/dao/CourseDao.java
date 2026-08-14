@@ -1,6 +1,7 @@
 package com.everrefine.elms.infrastructure.dao;
 
 import com.everrefine.elms.infrastructure.entity.course.CourseEntity;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +33,14 @@ public interface CourseDao extends CrudRepository<CourseEntity, UUID> {
   int countAllCourses();
 
   Optional<CourseEntity> findTop1ByOrderByCourseOrderDesc();
+
+  @Query(
+      """
+          SELECT *
+          FROM courses
+          WHERE course_order = :courseOrder
+          """)
+  Optional<CourseEntity> findByCourseOrder(@Param("courseOrder") BigDecimal courseOrder);
 
   @Query(
       """

@@ -7,15 +7,19 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.everrefine.elms.application.command.LoginHistoryCreateCommand;
 import com.everrefine.elms.application.command.PasswordUpdateCommand;
 import com.everrefine.elms.application.command.UserImportCommand;
 import com.everrefine.elms.application.command.UserSearchCommand;
 import com.everrefine.elms.application.dto.UserImportResponseDto;
 import com.everrefine.elms.application.dto.UserPageDto;
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.UserRepository;
 import com.everrefine.elms.presentation.request.PasswordUpdateRequest;
+import com.everrefine.elms.presentation.request.UserCreateRequest;
+import com.everrefine.elms.presentation.request.UserUpdateRequest;
 import com.everrefine.elms.testsupport.TestDataFactory;
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
@@ -111,7 +115,7 @@ class UserApplicationServiceImplTest {
   @Nested
   class ユーザーCSV出力 {
     @Test
-    void ユーザー情報がCSV形式で生成されること() throws IOException, CsvValidationException {
+    void ユーザー情報がCSV形式で生成される() throws IOException, CsvValidationException {
 
       // Arrange
       LocalDateTime dateTime1 = LocalDateTime.of(2026, 3, 21, 9, 30);
@@ -175,7 +179,7 @@ class UserApplicationServiceImplTest {
   @Nested
   class パスワード更新 {
     @Test
-    void パスワードと更新日時が更新されること() {
+    void パスワードと更新日時が更新される() {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId =
@@ -198,7 +202,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void 認証情報がないとき401のResponseStatusExceptionが投げられること() {
+    void 認証情報がないとき401のResponseStatusExceptionを投げる() {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId =
@@ -216,7 +220,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void ユーザーが存在しないときResourceNotFoundExceptionが投げられること() {
+    void ユーザーが存在しないときResourceNotFoundExceptionを投げる() {
       // Arrange - DBに存在しないユーザーIDで認証済みの状態にする
       createAuthentication(UUID.randomUUID(), "currentPass");
       PasswordUpdateRequest request = new PasswordUpdateRequest("currentPass", "newPass");
@@ -229,7 +233,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void パスワードが一致しないとき400のResponseStatusExceptionが投げられること() {
+    void パスワードが一致しないとき400のResponseStatusExceptionを投げる() {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId =
@@ -253,7 +257,7 @@ class UserApplicationServiceImplTest {
   @Nested
   class ユーザーCSV取込 {
     @Test
-    void CSVファイルをアップロードしてユーザー情報が洗い替えされること() throws IOException {
+    void CSVファイルをアップロードしてユーザー情報が洗い替えされる() throws IOException {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId1 =
@@ -307,7 +311,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void ファイル未指定の場合ResponseStatusExceptionが投げられること() {
+    void ファイル未指定の場合ResponseStatusExceptionを投げる() {
       // Arrange
       UUID currentUserId = UUID.randomUUID();
 
@@ -320,7 +324,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void 現在ログイン中ユーザーがCSVに含まれていない場合ResponseStatusExceptionが投げられること() throws IOException {
+    void 現在ログイン中ユーザーがCSVに含まれていない場合ResponseStatusExceptionを投げる() throws IOException {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId1 =
@@ -347,7 +351,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void ADMINユーザーがCSVに含まれていない場合ResponseStatusExceptionが投げられること() throws IOException {
+    void ADMINユーザーがCSVに含まれていない場合ResponseStatusExceptionを投げる() throws IOException {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId =
@@ -373,7 +377,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void CSVヘッダが不正な場合ResponseStatusExceptionが投げられること() throws IOException {
+    void CSVヘッダが不正な場合ResponseStatusExceptionを投げる() throws IOException {
       // Arrange
       UUID currentUserId = UUID.randomUUID();
 
@@ -399,7 +403,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void CSVファイル形式が不正な場合ResponseStatusExceptionが投げられること() throws IOException {
+    void CSVファイル形式が不正な場合ResponseStatusExceptionを投げる() throws IOException {
       // Arrange
       UUID currentUserId = UUID.randomUUID();
 
@@ -424,6 +428,157 @@ class UserApplicationServiceImplTest {
   }
 
   @Nested
+  class ユーザー登録 {
+
+    @Test
+    void ユーザーを新規登録できる() {
+      // Act
+      UserCreateRequest createRequest =
+          new UserCreateRequest(
+              "山田 太郎", "yamada", "yamada@example.com", "password", "password", null, "GENERAL");
+      userApplicationService.createUser(createRequest.toCommand());
+
+      // Assert
+      Integer cnt =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM users WHERE email_address = ?",
+              Integer.class,
+              "yamada@example.com");
+      assertEquals(1, cnt);
+    }
+
+    @Test
+    void メールアドレスが既存ユーザーと重複するとBadRequestExceptionを投げる() {
+      // Arrange
+      testData.createUser("yamada@example.com", "password", "山田 太郎", "yamada", "GENERAL");
+
+      // Act & Assert
+      UserCreateRequest createRequest =
+          new UserCreateRequest(
+              "鈴木 花子", "suzuki", "yamada@example.com", "password", "password", null, "GENERAL");
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class,
+              () -> userApplicationService.createUser(createRequest.toCommand()));
+      assertEquals("このメールアドレスはすでに使用されています", exception.getMessage());
+    }
+
+    @Test
+    void ユーザー名が既存ユーザーと重複するとBadRequestExceptionを投げる() {
+      // Arrange
+      testData.createUser("yamada@example.com", "password", "山田 太郎", "yamada", "GENERAL");
+
+      // Act & Assert
+      UserCreateRequest createRequest =
+          new UserCreateRequest(
+              "鈴木 花子", "yamada", "suzuki@example.com", "password", "password", null, "GENERAL");
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class,
+              () -> userApplicationService.createUser(createRequest.toCommand()));
+      assertEquals("このユーザー名はすでに使用されています", exception.getMessage());
+    }
+  }
+
+  @Nested
+  class ユーザー更新 {
+
+    @Test
+    void メールアドレスが他のユーザーと重複するとBadRequestExceptionを投げる() {
+      // Arrange
+      testData.createUser("yamada@example.com", "password", "山田 太郎", "yamada", "GENERAL");
+      UUID targetUserId =
+          testData.createUser("suzuki@example.com", "password", "鈴木 花子", "suzuki", "GENERAL");
+
+      // Act & Assert
+      UserUpdateRequest updateRequest =
+          new UserUpdateRequest(null, "鈴木 花子", "suzuki", "yamada@example.com", null);
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class,
+              () -> userApplicationService.updateUser(updateRequest.toCommand(targetUserId)));
+      assertEquals("このメールアドレスはすでに使用されています", exception.getMessage());
+    }
+
+    @Test
+    void ユーザー名が他のユーザーと重複するとBadRequestExceptionを投げる() {
+      // Arrange
+      testData.createUser("yamada@example.com", "password", "山田 太郎", "yamada", "GENERAL");
+      UUID targetUserId =
+          testData.createUser("suzuki@example.com", "password", "鈴木 花子", "suzuki", "GENERAL");
+
+      // Act & Assert
+      UserUpdateRequest updateRequest =
+          new UserUpdateRequest(null, "鈴木 花子", "yamada", "suzuki@example.com", null);
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class,
+              () -> userApplicationService.updateUser(updateRequest.toCommand(targetUserId)));
+      assertEquals("このユーザー名はすでに使用されています", exception.getMessage());
+    }
+
+    @Test
+    void 自分自身のメールアドレスとユーザー名を変更せずに更新できる() {
+      // Arrange
+      UUID targetUserId =
+          testData.createUser("suzuki@example.com", "password", "鈴木 花子", "suzuki", "GENERAL");
+
+      // Act
+      UserUpdateRequest updateRequest =
+          new UserUpdateRequest(null, "鈴木 太郎", "suzuki", "suzuki@example.com", null);
+      userApplicationService.updateUser(updateRequest.toCommand(targetUserId));
+
+      // Assert
+      User updatedUser = userRepository.findUserById(targetUserId).orElseThrow();
+      assertEquals("鈴木 太郎", updatedUser.realName().value());
+      assertEquals("suzuki", updatedUser.userName().value());
+      assertEquals("suzuki@example.com", updatedUser.emailAddress().value());
+    }
+  }
+
+  @Nested
+  class ログイン履歴更新 {
+
+    @Test
+    void ログイン履歴が作成されその後は更新される() {
+      // Arrange
+      UUID userId =
+          testData.createUser("yamada@example.com", "password", "山田 太郎", "yamada", "GENERAL");
+      LoginHistoryCreateCommand command = new LoginHistoryCreateCommand("yamada@example.com");
+
+      // Act - 初回
+      userApplicationService.updateUserLoginHistory(command);
+
+      // Assert - 履歴が1件作成される
+      Integer cnt =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM user_login_histories WHERE user_id = ?", Integer.class, userId);
+      assertEquals(1, cnt);
+
+      // Act - 2回目
+      userApplicationService.updateUserLoginHistory(command);
+
+      // Assert - 件数は増えず更新される
+      Integer cntAfter =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM user_login_histories WHERE user_id = ?", Integer.class, userId);
+      assertEquals(1, cntAfter);
+    }
+
+    /** 認証成功後に呼ばれるため通常は発生しないが、401に化けず404として扱われることを担保する。 */
+    @Test
+    void 対象ユーザーが存在しない場合はResourceNotFoundExceptionを投げる() {
+      // Arrange
+      LoginHistoryCreateCommand command = new LoginHistoryCreateCommand("notfound@example.com");
+
+      // Act & Assert
+      assertThrows(
+          ResourceNotFoundException.class,
+          () -> userApplicationService.updateUserLoginHistory(command));
+    }
+  }
+
+  @Nested
   class 進捗率取得 {
 
     /** 進捗率はコース配下のレッスン数に依存するため、既存のコースを消してから検証する。 */
@@ -433,7 +588,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void 進捗率を取得できること() {
+    void 進捗率を取得できる() {
       // Arrange
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -490,7 +645,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void 総レッスン数が0のとき進捗率が0になること() {
+    void 総レッスン数が0のとき進捗率が0になる() {
       // Arrange
       testData.createUser("test@example.com", "password", "テスト 太郎", "testuser", "GENERAL");
 

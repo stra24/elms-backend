@@ -2,6 +2,7 @@ package com.everrefine.elms.infrastructure.repository;
 
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.User;
+import com.everrefine.elms.domain.model.user.UserName;
 import com.everrefine.elms.domain.model.user.UserSearchCondition;
 import com.everrefine.elms.domain.repository.UserRepository;
 import com.everrefine.elms.infrastructure.dao.UserDao;
@@ -52,6 +53,11 @@ public class UserRepositoryImpl implements UserRepository {
   @Override
   public Optional<User> findUserByEmailAddress(EmailAddress emailAddress) {
     return userDao.findByEmailAddress(emailAddress.value()).map(UserEntity::toDomain);
+  }
+
+  @Override
+  public Optional<User> findUserByUserName(UserName userName) {
+    return userDao.findByUserName(userName.value()).map(UserEntity::toDomain);
   }
 
   @Override

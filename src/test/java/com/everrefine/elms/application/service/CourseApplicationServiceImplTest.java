@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.everrefine.elms.application.dto.CourseDto;
 import com.everrefine.elms.application.dto.CoursePageDto;
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.presentation.request.CourseCreateRequest;
 import com.everrefine.elms.presentation.request.CourseUpdateRequest;
@@ -59,7 +60,7 @@ public class CourseApplicationServiceImplTest {
   @Nested
   class コース作成 {
     @Test
-    void コースを新規作成できること() {
+    void コースを新規作成できる() {
       // Arrange
       CourseCreateRequest request =
           new CourseCreateRequest("テストタイトル", "テスト説明文", "https://test.com/xxx");
@@ -80,7 +81,7 @@ public class CourseApplicationServiceImplTest {
   @Nested
   class コース取得 {
     @Test
-    void ページング昇順で取得できること() {
+    void ページング昇順で取得できる() {
       // Arrange
       testData.createCourse(new BigDecimal("1024"), "Java入門", "a", "https://test.com/xxx");
       testData.createCourse(new BigDecimal("2048"), "Spring解説", "b", "https://test.com/yyy");
@@ -104,7 +105,7 @@ public class CourseApplicationServiceImplTest {
   @Nested
   class コース更新 {
     @Test
-    void コースを更新できること() {
+    void コースを更新できる() {
       // Arrange
       UUID id =
           testData.createCourse(
@@ -148,7 +149,7 @@ public class CourseApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないIDを更新するとResourceNotFoundExceptionが投げられること() {
+    void 存在しないIDを更新するとResourceNotFoundExceptionを投げる() {
       // Arrange
       UUID notExistsId = UUID.randomUUID();
 
@@ -160,12 +161,44 @@ public class CourseApplicationServiceImplTest {
           ResourceNotFoundException.class,
           () -> courseApplicationService.updateCourse(updateRequest.toCommand(notExistsId)));
     }
+
+    @Test
+    void 表示順が他のコースと重複するとBadRequestExceptionを投げる() {
+      // Arrange
+      testData.createCourse(new BigDecimal("1024"), "既存コース", "既存説明文");
+      UUID id = testData.createCourse(new BigDecimal("2048"), "更新対象コース", "更新対象説明文");
+
+      // Act & Assert
+      CourseUpdateRequest updateRequest =
+          new CourseUpdateRequest(null, new BigDecimal("1024"), "更新後タイトル", "更新後説明文", null);
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class,
+              () -> courseApplicationService.updateCourse(updateRequest.toCommand(id)));
+      assertEquals("この表示順はすでに使用されています", exception.getMessage());
+    }
+
+    @Test
+    void 表示順を変更せずに更新できる() {
+      // Arrange
+      UUID id = testData.createCourse(new BigDecimal("1024"), "更新対象コース", "更新対象説明文");
+
+      // Act
+      CourseUpdateRequest updateRequest =
+          new CourseUpdateRequest(null, new BigDecimal("1024"), "更新後タイトル", "更新後説明文", null);
+      courseApplicationService.updateCourse(updateRequest.toCommand(id));
+
+      // Assert
+      CourseDto dto = courseApplicationService.findCourseById(id);
+      assertEquals("更新後タイトル", dto.title());
+      assertEquals(new BigDecimal("1024.0000"), dto.courseOrder());
+    }
   }
 
   @Nested
   class コース削除 {
     @Test
-    void コースを削除できること() {
+    void コースを削除できる() {
       // Arrange
       UUID id =
           testData.createCourse(

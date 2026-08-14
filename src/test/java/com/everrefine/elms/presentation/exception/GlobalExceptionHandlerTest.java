@@ -80,7 +80,7 @@ public class GlobalExceptionHandlerTest {
   class リクエスト不正 {
 
     @Test
-    void パスパラメータが不正なUUIDのときステータス400が返ること() throws Exception {
+    void パスパラメータが不正なUUIDのときステータス400が返る() throws Exception {
       mockMvc
           .perform(MockMvcRequestBuilders.get("/api/courses/not-a-uuid"))
           .andExpect(status().isBadRequest())
@@ -88,7 +88,7 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void リクエストボディのバリデーション違反のときステータス400が返ること() throws Exception {
+    void リクエストボディのバリデーション違反のときステータス400が返る() throws Exception {
       mockMvc
           .perform(
               MockMvcRequestBuilders.post("/api/courses")
@@ -99,7 +99,7 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 壊れたJSONボディのときステータス400が返ること() throws Exception {
+    void 壊れたJSONボディのときステータス400が返る() throws Exception {
       mockMvc
           .perform(
               MockMvcRequestBuilders.post("/api/courses")
@@ -109,14 +109,14 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 必須のリクエストパートがないときステータス400が返ること() throws Exception {
+    void 必須のリクエストパートがないときステータス400が返る() throws Exception {
       mockMvc
           .perform(MockMvcRequestBuilders.multipart("/api/files/upload"))
           .andExpect(status().isBadRequest());
     }
 
     @Test
-    void 現在のパスワードが一致しないときステータス400が返ること() throws Exception {
+    void 現在のパスワードが一致しないときステータス400が返る() throws Exception {
       mockMvc
           .perform(
               MockMvcRequestBuilders.put("/api/users/password")
@@ -132,7 +132,7 @@ public class GlobalExceptionHandlerTest {
      * しかし理由が定型文に置き換わってしまうため、メッセージまで検証することで専用ハンドラの退行を検出する。
      */
     @Test
-    void CSVに現在ログイン中ユーザーが含まれないとき理由付きでステータス400が返ること() throws Exception {
+    void CSVに現在ログイン中ユーザーが含まれないとき理由付きでステータス400が返る() throws Exception {
       String csv = "権限,氏名,メールアドレス,ユーザー名\n管理者,山田 太郎,other@example.com,yamada\n";
       mockMvc
           .perform(
@@ -149,7 +149,7 @@ public class GlobalExceptionHandlerTest {
   class 認証と認可 {
 
     @Test
-    void 未認証のときステータス401が返ること() throws Exception {
+    void 未認証のときステータス401が返る() throws Exception {
       SecurityContextHolder.clearContext();
       mockMvc
           .perform(MockMvcRequestBuilders.get("/api/courses"))
@@ -158,7 +158,7 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 管理者権限が必要なAPIを一般ユーザーで呼ぶとステータス403が返ること() throws Exception {
+    void 管理者権限が必要なAPIを一般ユーザーで呼ぶとステータス403が返る() throws Exception {
       authenticateAs(adminId, "GENERAL");
       mockMvc
           .perform(MockMvcRequestBuilders.delete("/api/users/{userId}", MISSING_ID))
@@ -171,7 +171,7 @@ public class GlobalExceptionHandlerTest {
   class リソース未検出 {
 
     @Test
-    void 存在しないコースを取得するとステータス404が返ること() throws Exception {
+    void 存在しないコースを取得するとステータス404が返る() throws Exception {
       mockMvc
           .perform(MockMvcRequestBuilders.get("/api/courses/{courseId}", MISSING_ID))
           .andExpect(status().isNotFound())
@@ -179,7 +179,7 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 存在しないレッスングループにレッスンを作成するとステータス404が返ること() throws Exception {
+    void 存在しないレッスングループにレッスンを作成するとステータス404が返る() throws Exception {
       UUID courseId = testData.createCourse(new BigDecimal("987654"), "検証コース", "説明");
       mockMvc
           .perform(
@@ -193,7 +193,7 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 存在しないコースにレッスングループを作成するとステータス404が返ること() throws Exception {
+    void 存在しないコースにレッスングループを作成するとステータス404が返る() throws Exception {
       mockMvc
           .perform(
               MockMvcRequestBuilders.post("/api/courses/{courseId}/lesson-groups", MISSING_ID)
@@ -203,7 +203,7 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void ログイン中ユーザーが存在しない状態でCSV取込するとステータス404が返ること() throws Exception {
+    void ログイン中ユーザーが存在しない状態でCSV取込するとステータス404が返る() throws Exception {
       authenticateAs(MISSING_ID, "ADMIN");
       String csv = "権限,氏名,メールアドレス,ユーザー名\n管理者,山田 太郎,a@example.com,yamada\n";
       mockMvc
@@ -216,14 +216,14 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 存在しないURLのときステータス404が返ること() throws Exception {
+    void 存在しないURLのときステータス404が返る() throws Exception {
       mockMvc
           .perform(MockMvcRequestBuilders.get("/api/unknown-path"))
           .andExpect(status().isNotFound());
     }
 
     @Test
-    void 削除は対象が存在しなくてもステータス204が返ること() throws Exception {
+    void 削除は対象が存在しなくてもステータス204が返る() throws Exception {
       mockMvc
           .perform(MockMvcRequestBuilders.delete("/api/courses/{courseId}", MISSING_ID))
           .andExpect(status().isNoContent());
@@ -240,14 +240,14 @@ public class GlobalExceptionHandlerTest {
   class フレームワーク由来のエラー {
 
     @Test
-    void サポートされないHTTPメソッドのときステータス405が返ること() throws Exception {
+    void サポートされないHTTPメソッドのときステータス405が返る() throws Exception {
       mockMvc
           .perform(MockMvcRequestBuilders.patch("/api/courses"))
           .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
-    void サポートされないContentTypeのときステータス415が返ること() throws Exception {
+    void サポートされないContentTypeのときステータス415が返る() throws Exception {
       mockMvc
           .perform(
               MockMvcRequestBuilders.post("/api/courses")

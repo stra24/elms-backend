@@ -1,7 +1,11 @@
 package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.application.util.CsvImportUtils;
+import com.everrefine.elms.domain.exception.InvalidValueException;
+import com.everrefine.elms.domain.model.user.EmailAddress;
+import com.everrefine.elms.domain.model.user.RealName;
 import com.everrefine.elms.domain.model.user.User;
+import com.everrefine.elms.domain.model.user.UserName;
 import com.everrefine.elms.domain.model.user.UserRole;
 import java.util.HashSet;
 import java.util.List;
@@ -127,7 +131,32 @@ public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> r
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "行" + lineNumber + ": 権限が不正です");
     }
 
+    throwExceptionIfValueInvalid(realName, emailAddress, userName, lineNumber);
+
     return new UserImportRowCommand(userRole, realName, emailAddress, userName);
+  }
+
+  /**
+   * 氏名・メールアドレス・ユーザー名が、ユーザー作成時と同じ制約を満たさない場合に例外をスローする。
+   *
+   * <p>値オブジェクトの生成をここで先に試すことで、制約の定義をドメイン側の一箇所に保ちつつ、 CSVの不備を取込前に行番号付きの {@code 400 Bad Request}
+   * として返せるようにする。 この検証がないと、登録処理の途中で値オブジェクトの生成に失敗し、DBのデータ不整合と同じ扱いで {@code 500} を返してしまう。
+   *
+   * @param realName 氏名
+   * @param emailAddress メールアドレス
+   * @param userName ユーザー名
+   * @param lineNumber CSV上の行番号
+   */
+  private static void throwExceptionIfValueInvalid(
+      String realName, String emailAddress, String userName, int lineNumber) {
+    try {
+      new RealName(realName);
+      new EmailAddress(emailAddress);
+      new UserName(userName);
+    } catch (InvalidValueException e) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "行" + lineNumber + ": " + e.getMessage());
+    }
   }
 
   /**

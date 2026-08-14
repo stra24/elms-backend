@@ -159,7 +159,7 @@ else レッスンが存在する
     AppService -> AppService : isLessonCompleted = (Optional.isPresent())
 
     AppService --> Controller : UserLessonDetailDto\n{ lesson情報, isLessonCompleted }
-    Controller --> Client : 200 OK { id, title, content, videoUrl, isLessonCompleted }
+    Controller --> Client : 200 OK { id, title, content, videoUrl, isLessonCompleted, ... }
   end
 end
 
@@ -178,37 +178,42 @@ Controller -> AppService : updateUserLesson(courseId, lessonGroupId, command)
 AppService -> LRepo : findById(lessonId)
 LRepo -> DB : SELECT FROM lessons
 DB --> LRepo : Optional<Lesson>
-LRepo --> AppService : Lesson
-AppService -> AppService : courseId・lessonGroupIdが一致するか検証
 
-AppService -> UserRepo : findUserById(userId)
-UserRepo -> DB : SELECT FROM users WHERE id = ?
-DB --> UserRepo : Optional<User>
-
-alt ユーザーが存在しない
+alt レッスンが存在しない、または courseId・lessonGroupId が不一致
   AppService --> Controller : ResourceNotFoundException
   Controller --> Client : 404 Not Found
-else ユーザーが存在する
-  UserRepo --> AppService : User
+else レッスンがパスと一致する
+  LRepo --> AppService : Lesson
 
-  AppService -> ULRepo : findByUserIdAndLessonId(userId, lessonId)
-  ULRepo -> DB : SELECT FROM user_lessons
-  DB --> ULRepo : Optional<UserLesson>
+  AppService -> UserRepo : findUserById(userId)
+  UserRepo -> DB : SELECT FROM users WHERE id = ?
+  DB --> UserRepo : Optional<User>
 
-  alt UserLessonが存在しない（初めて完了）
-    ULRepo --> AppService : empty
-    AppService -> ULRepo : save(UserLesson.create(userId, lessonId))
-    ULRepo -> DB : INSERT INTO user_lessons
-    DB --> ULRepo : ok
-  else UserLessonが既に存在する（updatedAtの更新）
-    ULRepo --> AppService : UserLesson
-    AppService -> ULRepo : save(userLesson.update())
-    ULRepo -> DB : UPDATE user_lessons SET updatedAt = NOW()
-    DB --> ULRepo : ok
+  alt ユーザーが存在しない
+    AppService --> Controller : ResourceNotFoundException
+    Controller --> Client : 404 Not Found
+  else ユーザーが存在する
+    UserRepo --> AppService : User
+
+    AppService -> ULRepo : findByUserIdAndLessonId(userId, lessonId)
+    ULRepo -> DB : SELECT FROM user_lessons
+    DB --> ULRepo : Optional<UserLesson>
+
+    alt UserLessonが存在しない（初めて完了）
+      ULRepo --> AppService : empty
+      AppService -> ULRepo : save(UserLesson.create(userId, lessonId))
+      ULRepo -> DB : INSERT INTO user_lessons
+      DB --> ULRepo : ok
+    else UserLessonが既に存在する（updatedAtの更新）
+      ULRepo --> AppService : UserLesson
+      AppService -> ULRepo : save(userLesson.update())
+      ULRepo -> DB : UPDATE user_lessons SET updatedAt = NOW()
+      DB --> ULRepo : ok
+    end
+
+    AppService --> Controller : void
+    Controller --> Client : 200 OK
   end
-
-  AppService --> Controller : void
-  Controller --> Client : 200 OK
 end
 
 ' ============================================================
@@ -222,22 +227,35 @@ Controller -> AppService : updateUserLesson(courseId, lessonGroupId, command)
 
 AppService -> LRepo : findById(lessonId)
 LRepo -> DB : SELECT FROM lessons
-DB --> LRepo : Lesson
-AppService -> AppService : courseId・lessonGroupIdが一致するか検証
+DB --> LRepo : Optional<Lesson>
 
-AppService -> UserRepo : findUserById(userId)
-UserRepo -> DB : SELECT FROM users WHERE id = ?
-DB --> UserRepo : User
+alt レッスンが存在しない、または courseId・lessonGroupId が不一致
+  AppService --> Controller : ResourceNotFoundException
+  Controller --> Client : 404 Not Found
+else レッスンがパスと一致する
+  LRepo --> AppService : Lesson
 
-AppService -> ULRepo : deleteByUserIdAndLessonId(userId, lessonId)
-ULRepo -> DB : DELETE FROM user_lessons\nWHERE userId = ? AND lessonId = ?
-DB --> ULRepo : ok
+  AppService -> UserRepo : findUserById(userId)
+  UserRepo -> DB : SELECT FROM users WHERE id = ?
+  DB --> UserRepo : Optional<User>
 
-note over AppService
-  レコードが存在しなくても正常終了（冪等性）
-end note
+  alt ユーザーが存在しない
+    AppService --> Controller : ResourceNotFoundException
+    Controller --> Client : 404 Not Found
+  else ユーザーが存在する
+    UserRepo --> AppService : User
 
-AppService --> Controller : void
-Controller --> Client : 200 OK
+    AppService -> ULRepo : deleteByUserIdAndLessonId(userId, lessonId)
+    ULRepo -> DB : DELETE FROM user_lessons\nWHERE userId = ? AND lessonId = ?
+    DB --> ULRepo : ok
+
+    note over AppService
+      レコードが存在しなくても正常終了（冪等性）
+    end note
+
+    AppService --> Controller : void
+    Controller --> Client : 200 OK
+  end
+end
 
 @enduml

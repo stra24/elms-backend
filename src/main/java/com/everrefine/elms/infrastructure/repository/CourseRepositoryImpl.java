@@ -42,6 +42,11 @@ public class CourseRepositoryImpl implements CourseRepository {
   }
 
   @Override
+  public Optional<Course> findCourseByCourseOrder(Order courseOrder) {
+    return courseDao.findByCourseOrder(courseOrder.value()).map(CourseEntity::toDomain);
+  }
+
+  @Override
   public List<Course> findCourses(PagerForRequest pagerForRequest) {
     return courseDao
         .findCoursesWithPagination(pagerForRequest.pageSize(), pagerForRequest.getOffset())

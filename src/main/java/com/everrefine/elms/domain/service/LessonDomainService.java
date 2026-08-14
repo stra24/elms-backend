@@ -22,4 +22,17 @@ public interface LessonDomainService {
    * @return 計算された新しい並び順
    */
   BigDecimal calculateNewOrder(BigDecimal precedingOrder, BigDecimal followingOrder);
+
+  /**
+   * 計算された並び順が、前後のレッスンの間に収まっているかを判定する。
+   *
+   * <p>並び順は小数第4位までしか保持できないため、同じ位置への挿入を繰り返すと中間値が丸められ、 前後どちらかの並び順と同じ値になる。その状態を検知するために使用する。
+   *
+   * @param newOrder 計算された新しい並び順
+   * @param precedingOrder 前のレッスンの並び順（先頭に移動する場合はnull）
+   * @param followingOrder 後のレッスンの並び順（末尾に移動する場合はnull）
+   * @return 前後のレッスンの間に収まっている場合はtrue
+   */
+  boolean hasRoomForNewOrder(
+      BigDecimal newOrder, BigDecimal precedingOrder, BigDecimal followingOrder);
 }

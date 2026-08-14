@@ -15,6 +15,7 @@ import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
 import com.everrefine.elms.application.dto.LessonPageDto;
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.repository.LessonRepository;
@@ -82,7 +83,7 @@ public class LessonApplicationServiceImplTest {
   @Nested
   class レッスン取得 {
     @Test
-    void レッスンをIDで取得できること() {
+    void レッスンをIDで取得できる() {
       // Arrange - テストデータを準備（IDは自動生成）
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -112,7 +113,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないレッスンIDでResourceNotFoundExceptionが投げられること() {
+    void 存在しないレッスンIDでResourceNotFoundExceptionを投げる() {
       // Act & Assert
       UUID nonExistentId = UUID.randomUUID();
       ResourceNotFoundException exception =
@@ -125,7 +126,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void パスのコースまたはグループがレッスンと一致しない場合ResourceNotFoundExceptionが投げられること() {
+    void パスのコースまたはグループがレッスンと一致しない場合ResourceNotFoundExceptionを投げる() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "整合コース", "説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "整合グループ");
       UUID lessonId =
@@ -144,7 +145,7 @@ public class LessonApplicationServiceImplTest {
   @Nested
   class レッスン検索 {
     @Test
-    void レッスンを検索できること() {
+    void レッスンを検索できる() {
       // Arrange - テストデータを準備（IDは自動生成）
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -171,7 +172,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 検索結果が0件のとき空リストが返ること() {
+    void 検索結果が0件のとき空リストが返る() {
       // Arrange - データが存在しない状態
       LessonSearchRequest searchRequest =
           new LessonSearchRequest(1, 10, UUID.randomUUID().toString(), null, null, null, null);
@@ -192,7 +193,7 @@ public class LessonApplicationServiceImplTest {
   @Nested
   class コース別レッスン一覧取得 {
     @Test
-    void コース別レッスン一覧を取得できること() {
+    void コース別レッスン一覧を取得できる() {
       // Arrange - テストデータを準備（IDは自動生成）
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -209,7 +210,7 @@ public class LessonApplicationServiceImplTest {
   @Nested
   class レッスン作成 {
     @Test
-    void レッスンを作成できること() {
+    void レッスンを作成できる() {
       // Arrange - 関連データを準備（IDは自動生成）
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -239,7 +240,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void null許容フィールドを指定せずにレッスンを作成できること() {
+    void null許容フィールドを指定せずにレッスンを作成できる() {
       // Arrange - 関連データを準備（IDは自動生成）
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -258,7 +259,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 複数レッスンを一括作成できること() {
+    void 複数レッスンを一括作成できる() {
       // Arrange
       UUID courseId = testData.createCourse(new BigDecimal("1"), "一括登録コース", "コース説明");
       UUID lessonGroupId1 =
@@ -321,7 +322,7 @@ public class LessonApplicationServiceImplTest {
   @Nested
   class レッスンCSV取込 {
     @Test
-    void 既存レッスン構成を置き換えられること() throws Exception {
+    void 既存レッスン構成を置き換えられる() throws Exception {
       // Arrange - 既存のレッスン構成を準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "CSV取込コース", "コース説明");
       UUID oldLessonGroupId =
@@ -429,7 +430,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないコースを指定した場合ResourceNotFoundExceptionが投げられ既存構成が削除されないこと() throws Exception {
+    void 存在しないコースを指定した場合ResourceNotFoundExceptionを投げ既存構成が削除されない() throws Exception {
       // Arrange
       UUID courseId = testData.createCourse(new BigDecimal("1"), "CSV取込失敗コース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1024"), "保持対象グループ");
@@ -471,7 +472,7 @@ public class LessonApplicationServiceImplTest {
   @Nested
   class レッスン更新 {
     @Test
-    void レッスンを更新できること() {
+    void レッスンを更新できる() {
       // Arrange - 既存レッスンを準備（IDは自動生成）
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -510,7 +511,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void null許容フィールドをnullで更新できること() {
+    void null許容フィールドをnullで更新できる() {
       // Arrange - 既存レッスンを準備（IDは自動生成）
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -538,7 +539,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないレッスンを更新するとResourceNotFoundExceptionが投げられること() {
+    void 存在しないレッスンを更新するとResourceNotFoundExceptionを投げる() {
       // Arrange
       LessonUpdateRequest request =
           new LessonUpdateRequest("存在しないレッスン", "説明", "https://example.com/video.mp4");
@@ -557,7 +558,7 @@ public class LessonApplicationServiceImplTest {
   @Nested
   class レッスン削除 {
     @Test
-    void 存在するレッスンを削除できること() {
+    void 存在するレッスンを削除できる() {
       // Arrange - 削除対象のレッスンを準備（IDは自動生成）
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -581,7 +582,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないレッスンを削除してもエラーにならないこと() {
+    void 存在しないレッスンを削除してもエラーにならない() {
       // Act - 存在しないIDで削除を実行
       lessonApplicationService.deleteLessonById(UUID.randomUUID());
 
@@ -589,7 +590,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 複数回の削除操作が安全に実行できること() {
+    void 複数回の削除操作が安全に実行できる() {
       // Arrange - 削除対象のレッスンを準備（IDは自動生成）
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -615,9 +616,65 @@ public class LessonApplicationServiceImplTest {
   }
 
   @Nested
+  class レッスン並び替えの境界 {
+
+    /** 隣接する2件の間隔が小数第4位を下回ると中間値を作れないため、500ではなく400で弾く。 */
+    @Test
+    void 間隔が狭すぎて移動できない場合はBadRequestExceptionを投げる() {
+      // Arrange
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
+
+      // 並び順の差が最小単位（0.0001）しかない2件を用意する
+      UUID precedingLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1000.0000"), "レッスン1", "説明1", null);
+      UUID followingLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1000.0001"), "レッスン2", "説明2", null);
+      UUID targetLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("2000.0000"), "レッスン3", "説明3", null);
+
+      // Act & Assert
+      LessonOrderUpdateRequest request =
+          new LessonOrderUpdateRequest(precedingLessonId, followingLessonId);
+      LessonOrderUpdateCommand command = request.toCommand(targetLessonId);
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class, () -> lessonApplicationService.updateLessonOrder(command));
+      assertEquals("この位置にはこれ以上移動できません。前後のレッスンの並び順を空けてから再度実行してください", exception.getMessage());
+
+      // 元の並び順が保持されていること
+      BigDecimal order =
+          jdbcTemplate.queryForObject(
+              "SELECT lesson_order FROM lessons WHERE id = ?", BigDecimal.class, targetLessonId);
+      assertEquals(new BigDecimal("2000.0000"), order);
+    }
+
+    @Test
+    void 前後のレッスンをどちらも指定しない場合はBadRequestExceptionを投げる() {
+      // Arrange
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
+      UUID targetLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1000.0000"), "レッスン1", "説明1", null);
+
+      // Act & Assert
+      LessonOrderUpdateRequest request = new LessonOrderUpdateRequest(null, null);
+      LessonOrderUpdateCommand command = request.toCommand(targetLessonId);
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class, () -> lessonApplicationService.updateLessonOrder(command));
+      assertEquals("移動先の前後いずれかのレッスンを指定してください", exception.getMessage());
+    }
+  }
+
+  @Nested
   class レッスン並び替え {
     @Test
-    void 指定した2つのレッスンの間に移動できること() {
+    void 指定した2つのレッスンの間に移動できる() {
       // Arrange - テストデータを準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -668,7 +725,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 先頭に移動できること() {
+    void 先頭に移動できる() {
       // Arrange - テストデータを準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -709,7 +766,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 末尾に移動できること() {
+    void 末尾に移動できる() {
       // Arrange - テストデータを準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -750,7 +807,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないレッスンIDで並び替えするとResourceNotFoundExceptionが投げられること() {
+    void 存在しないレッスンIDで並び替えするとResourceNotFoundExceptionを投げる() {
       // Arrange - 存在するレッスンを1つ準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -774,7 +831,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないprecedingLessonIdでResourceNotFoundExceptionが投げられること() {
+    void 存在しないprecedingLessonIdでResourceNotFoundExceptionを投げる() {
       // Arrange - テストデータを準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
@@ -798,7 +855,7 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないfollowingLessonIdでResourceNotFoundExceptionが投げられること() {
+    void 存在しないfollowingLessonIdでResourceNotFoundExceptionを投げる() {
       // Arrange - テストデータを準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");

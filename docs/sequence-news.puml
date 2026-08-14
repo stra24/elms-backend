@@ -18,7 +18,8 @@ participant "NewsRepository" as Repo
 database "DB" as DB
 
 note over Client
-  全APIはJWT認証済みであることが前提（認証・JWT検証の詳細は「認証」シーケンス図を参照）
+  GET は認証済みなら利用可。作成・更新・削除は管理者（ADMIN）のみ。権限不足は 403。
+  認証・JWT検証の詳細は「認証」シーケンス図を参照。
 end note
 
 ' ============================================================
@@ -26,7 +27,7 @@ end note
 ' ============================================================
 == お知らせ一覧取得 (GET /api/news) ==
 
-Client -> Controller : GET /api/news\n?pageNum=1&pageSize=10&...（検索条件）
+Client -> Controller : GET /api/news\n?pageNum=1&pageSize=10&title=&createdDateFrom=&createdDateTo=
 
 Controller -> AppService : findNews(NewsSearchCommand)
 

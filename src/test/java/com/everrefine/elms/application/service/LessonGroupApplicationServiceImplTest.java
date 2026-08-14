@@ -43,7 +43,7 @@ class LessonGroupApplicationServiceImplTest {
   @Nested
   class レッスングループ作成 {
     @Test
-    void レッスングループを作成できること() {
+    void レッスングループを作成できる() {
       // Arrange
       LocalDateTime now = LocalDateTime.now();
       jdbcTemplate.update(
@@ -82,7 +82,7 @@ class LessonGroupApplicationServiceImplTest {
   @Nested
   class レッスングループ更新 {
     @Test
-    void レッスングループを更新できること() {
+    void レッスングループを更新できる() {
       // Arrange
       LocalDateTime now = LocalDateTime.now();
       jdbcTemplate.update(
@@ -153,7 +153,7 @@ class LessonGroupApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないレッスングループIDの場合ResourceNotFoundExceptionが投げられること() {
+    void 存在しないレッスングループIDの場合ResourceNotFoundExceptionを投げる() {
       // Arrange
       LessonGroupUpdateRequest request = new LessonGroupUpdateRequest("新しいタイトル");
       UUID nonExistentId = UUID.randomUUID();
@@ -171,7 +171,7 @@ class LessonGroupApplicationServiceImplTest {
   @Nested
   class レッスングループ削除 {
     @Test
-    void レッスングループを削除できること() {
+    void レッスングループを削除できる() {
       // Arrange
       LocalDateTime now = LocalDateTime.now();
       jdbcTemplate.update(
@@ -207,7 +207,7 @@ class LessonGroupApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないレッスングループを削除してもエラーにならないこと() {
+    void 存在しないレッスングループを削除してもエラーにならない() {
       // Arrange
       // Act
       lessonGroupApplicationService.deleteLessonGroupById(UUID.randomUUID());

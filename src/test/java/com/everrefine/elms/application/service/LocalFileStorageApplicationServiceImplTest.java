@@ -1,8 +1,11 @@
 package com.everrefine.elms.application.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.domain.model.user.Password;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,6 +24,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -96,9 +100,55 @@ class LocalFileStorageApplicationServiceImplTest {
   }
 
   @Nested
+  class 画像アップロード {
+
+    @Test
+    void 画像を保存し保存先パスを返す() throws IOException {
+      // Arrange
+      MockMultipartFile file =
+          new MockMultipartFile("file", "sample.png", "image/png", "dummy".getBytes());
+
+      // Act
+      String filePath = fileStorageApplicationService.saveImage(file);
+
+      // Assert
+      assertTrue(filePath.startsWith("/uploads/"));
+      assertTrue(filePath.endsWith(".png"), () -> "拡張子が引き継がれていません: " + filePath);
+      assertTrue(Files.exists(uploadDir.resolve(filePath.substring("/uploads/".length()))));
+    }
+
+    @Test
+    void 空ファイルの場合はBadRequestExceptionを投げる() {
+      // Arrange
+      MockMultipartFile emptyFile =
+          new MockMultipartFile("file", "empty.png", "image/png", new byte[0]);
+
+      // Act & Assert
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class, () -> fileStorageApplicationService.saveImage(emptyFile));
+      assertEquals("ファイルを指定してください", exception.getMessage());
+    }
+
+    @Test
+    void 拡張子がない場合も保存できる() throws IOException {
+      // Arrange
+      MockMultipartFile file =
+          new MockMultipartFile("file", "noextension", "image/png", "dummy".getBytes());
+
+      // Act
+      String filePath = fileStorageApplicationService.saveImage(file);
+
+      // Assert
+      assertTrue(filePath.startsWith("/uploads/"));
+      assertTrue(Files.exists(uploadDir.resolve(filePath.substring("/uploads/".length()))));
+    }
+  }
+
+  @Nested
   class 孤立ファイル削除 {
     @Test
-    void 孤立ファイルが削除されること() throws IOException {
+    void 孤立ファイルが削除される() throws IOException {
       createFile("orphan.jpg");
 
       fileStorageApplicationService.delete();
@@ -107,7 +157,7 @@ class LocalFileStorageApplicationServiceImplTest {
     }
 
     @Test
-    void DBに存在するファイルは削除されないこと() throws IOException {
+    void DBに存在するファイルは削除されない() throws IOException {
       createFile("test.jpg");
       createUser("/uploads/test.jpg");
 
@@ -117,14 +167,14 @@ class LocalFileStorageApplicationServiceImplTest {
     }
 
     @Test
-    void アップロードディレクトリが空のとき正常終了すること(CapturedOutput output) throws IOException {
+    void アップロードディレクトリが空のとき正常終了する(CapturedOutput output) throws IOException {
       fileStorageApplicationService.delete();
 
       assertTrue(output.getOut().contains("削除対象のファイルは見つかりませんでした。"));
     }
 
     @Test
-    void 孤立ファイルがないとき削除されないこと(CapturedOutput output) throws IOException {
+    void 孤立ファイルがないとき削除されない(CapturedOutput output) throws IOException {
       createFile("test.jpg");
       createUser("/uploads/test.jpg");
 

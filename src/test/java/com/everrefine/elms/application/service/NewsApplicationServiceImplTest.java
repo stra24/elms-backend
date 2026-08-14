@@ -60,7 +60,7 @@ public class NewsApplicationServiceImplTest {
   @Nested
   class お知らせ作成 {
     @Test
-    void お知らせを新規作成できること() {
+    void お知らせを新規作成できる() {
       // Arrange
       NewsCreateRequest request = new NewsCreateRequest("テストタイトル", "テスト本文");
       newsApplicationService.createNews(request.toCommand());
@@ -83,7 +83,7 @@ public class NewsApplicationServiceImplTest {
   @Nested
   class お知らせ取得 {
     @Test
-    void タイトル部分一致と日付範囲でページング降順に取得できること() {
+    void タイトル部分一致と日付範囲でページング降順に取得できる() {
       // Arrange
       // データ5件投入（作成日をバラして後で日付範囲・並び順テストに使う）
       insertNewsWithDate("Java入門", "A", LocalDate.of(2025, 1, 1)); // 範囲外（後で除外される）
@@ -113,7 +113,7 @@ public class NewsApplicationServiceImplTest {
   @Nested
   class お知らせ更新 {
     @Test
-    void お知らせを更新できること() {
+    void お知らせを更新できる() {
       // Arrange: まず1件作成
       NewsCreateRequest createRequest = new NewsCreateRequest("初期タイトル", "初期本文");
       newsApplicationService.createNews(createRequest.toCommand());
@@ -157,7 +157,7 @@ public class NewsApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないIDを更新するとResourceNotFoundExceptionが投げられること() {
+    void 存在しないIDを更新するとResourceNotFoundExceptionを投げる() {
       // Arrange
       UUID notExistsId = UUID.randomUUID();
 

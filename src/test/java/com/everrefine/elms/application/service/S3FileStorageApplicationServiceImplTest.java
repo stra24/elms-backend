@@ -104,7 +104,7 @@ class S3FileStorageApplicationServiceImplTest {
   @Nested
   class 孤立ファイル削除 {
     @Test
-    void 孤立ファイルが削除されること() throws IOException {
+    void 孤立ファイルが削除される() throws IOException {
       mockS3Objects("orphan.jpg");
 
       fileStorageApplicationService.delete();
@@ -113,7 +113,7 @@ class S3FileStorageApplicationServiceImplTest {
     }
 
     @Test
-    void DBに存在するファイルは削除されないこと() throws IOException {
+    void DBに存在するファイルは削除されない() throws IOException {
       mockS3Objects("test.jpg");
       createUser(S3_PUBLIC_URL + "/test.jpg");
 
@@ -123,7 +123,7 @@ class S3FileStorageApplicationServiceImplTest {
     }
 
     @Test
-    void S3バケットにファイルがないとき正常終了すること(CapturedOutput output) throws IOException {
+    void S3バケットにファイルがないとき正常終了する(CapturedOutput output) throws IOException {
       mockS3Objects();
 
       fileStorageApplicationService.delete();
@@ -132,7 +132,7 @@ class S3FileStorageApplicationServiceImplTest {
     }
 
     @Test
-    void 孤立ファイルがないとき削除処理が呼ばれないこと(CapturedOutput output) throws IOException {
+    void 孤立ファイルがないとき削除処理が呼ばれない(CapturedOutput output) throws IOException {
       mockS3Objects("test.jpg");
       createUser(S3_PUBLIC_URL + "/test.jpg");
 
@@ -143,7 +143,7 @@ class S3FileStorageApplicationServiceImplTest {
     }
 
     @Test
-    void S3削除に失敗したとき警告ログが出力されて正常に終了すること(CapturedOutput output) throws IOException {
+    void S3削除に失敗したとき警告ログが出力されて正常に終了する(CapturedOutput output) throws IOException {
       mockS3Objects("fail.jpg");
       when(s3Client.deleteObject(any(DeleteObjectRequest.class)))
           .thenThrow(S3Exception.builder().message("error").build());
@@ -155,7 +155,7 @@ class S3FileStorageApplicationServiceImplTest {
     }
 
     @Test
-    void S3削除に失敗したとき他のファイルは削除されること() throws IOException {
+    void S3削除に失敗したとき他のファイルは削除される() throws IOException {
       mockS3Objects("fail.jpg", "success.jpg");
       when(s3Client.deleteObject(
               DeleteObjectRequest.builder().bucket(BUCKET).key("fail.jpg").build()))

@@ -16,6 +16,7 @@ import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.ProgressRate;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.model.user.UserLoginHistory;
+import com.everrefine.elms.domain.model.user.UserName;
 import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.domain.repository.UserLessonRepository;
 import com.everrefine.elms.domain.repository.UserLoginHistoryRepository;
@@ -38,7 +39,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -159,6 +159,9 @@ public class UserApplicationServiceImpl implements UserApplicationService {
       throw new BadRequestException("パスワードの確認が一致しません");
     }
 
+    validateEmailAddressNotUsedByOtherUser(userCreateCommand.emailAddress(), null);
+    validateUserNameNotUsedByOtherUser(userCreateCommand.userName(), null);
+
     userRepository.createUser(userCreateCommand.toUser());
   }
 
@@ -172,7 +175,53 @@ public class UserApplicationServiceImpl implements UserApplicationService {
                 () ->
                     new ResourceNotFoundException(
                         User.class, String.valueOf(userUpdateCommand.id())));
+
+    validateEmailAddressNotUsedByOtherUser(userUpdateCommand.emailAddress(), user.id());
+    validateUserNameNotUsedByOtherUser(userUpdateCommand.userName(), user.id());
+
     userRepository.updateUser(userUpdateCommand.toUser(user));
+  }
+
+  /**
+   * メールアドレスが他のユーザーに使用されていないことを検証する。
+   *
+   * @param emailAddress 検証対象のメールアドレス
+   * @param excludedUserId 検証から除外するユーザーID（更新時は更新対象のユーザーID、登録時はnull）
+   * @throws BadRequestException 他のユーザーがすでに使用している場合
+   */
+  private void validateEmailAddressNotUsedByOtherUser(String emailAddress, UUID excludedUserId) {
+    if (emailAddress == null) {
+      return;
+    }
+
+    userRepository
+        .findUserByEmailAddress(new EmailAddress(emailAddress))
+        .filter(existingUser -> !existingUser.id().equals(excludedUserId))
+        .ifPresent(
+            existingUser -> {
+              throw new BadRequestException("このメールアドレスはすでに使用されています");
+            });
+  }
+
+  /**
+   * ユーザー名が他のユーザーに使用されていないことを検証する。
+   *
+   * @param userName 検証対象のユーザー名
+   * @param excludedUserId 検証から除外するユーザーID（更新時は更新対象のユーザーID、登録時はnull）
+   * @throws BadRequestException 他のユーザーがすでに使用している場合
+   */
+  private void validateUserNameNotUsedByOtherUser(String userName, UUID excludedUserId) {
+    if (userName == null) {
+      return;
+    }
+
+    userRepository
+        .findUserByUserName(new UserName(userName))
+        .filter(existingUser -> !existingUser.id().equals(excludedUserId))
+        .ifPresent(
+            existingUser -> {
+              throw new BadRequestException("このユーザー名はすでに使用されています");
+            });
   }
 
   @Override
@@ -185,10 +234,14 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   @Transactional
   @Override
   public void updateUserLoginHistory(LoginHistoryCreateCommand loginHistoryCreateCommand) {
+    // 認証成功後に呼ばれるため、通常ここでユーザーが見つからないことはない。
+    // Spring Securityの UsernameNotFoundException を投げると AuthenticationException として
+    // コントローラーに握りつぶされ、データ不整合が「認証失敗」の401に化けてしまうため使用しない。
     User user =
         userRepository
             .findUserByEmailAddress(new EmailAddress(loginHistoryCreateCommand.email()))
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+            .orElseThrow(
+                () -> new ResourceNotFoundException(User.class, loginHistoryCreateCommand.email()));
 
     Optional<UserLoginHistory> userLoginHistory =
         userLoginHistoryRepository.findUserLoginHistoryByUserId(user.id());

@@ -4,10 +4,13 @@ import com.everrefine.elms.application.command.CourseCreateCommand;
 import com.everrefine.elms.application.command.CourseUpdateCommand;
 import com.everrefine.elms.application.dto.CourseDto;
 import com.everrefine.elms.application.dto.CoursePageDto;
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
+import com.everrefine.elms.domain.model.Order;
 import com.everrefine.elms.domain.model.PagerForRequest;
 import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.repository.CourseRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -59,7 +62,32 @@ public class CourseApplicationServiceImpl implements CourseApplicationService {
                 () ->
                     new ResourceNotFoundException(
                         Course.class, String.valueOf(courseUpdateCommand.id())));
+
+    validateCourseOrderNotUsedByOtherCourse(courseUpdateCommand.courseOrder(), course.id());
+
     courseRepository.updateCourse(courseUpdateCommand.toCourse(course));
+  }
+
+  /**
+   * コースの表示順が他のコースに使用されていないことを検証する。
+   *
+   * @param courseOrder 検証対象の表示順
+   * @param excludedCourseId 検証から除外するコースID（更新対象のコースID）
+   * @throws BadRequestException 他のコースがすでに使用している場合
+   */
+  private void validateCourseOrderNotUsedByOtherCourse(
+      BigDecimal courseOrder, UUID excludedCourseId) {
+    if (courseOrder == null) {
+      return;
+    }
+
+    courseRepository
+        .findCourseByCourseOrder(new Order(courseOrder))
+        .filter(existingCourse -> !existingCourse.id().equals(excludedCourseId))
+        .ifPresent(
+            existingCourse -> {
+              throw new BadRequestException("この表示順はすでに使用されています");
+            });
   }
 
   @Override

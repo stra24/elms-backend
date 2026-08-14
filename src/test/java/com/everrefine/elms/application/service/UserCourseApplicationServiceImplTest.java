@@ -39,7 +39,7 @@ public class UserCourseApplicationServiceImplTest {
   @Nested
   class コース一覧取得 {
     @Test
-    void 進捗付きのコース一覧が返ること() {
+    void 進捗付きのコース一覧が返る() {
       // 1. usersテーブルに1ユーザー作る
       UUID userId = testData.createUser("ul-not-done@example.com", "p", "太郎", "ulnd", "GENERAL");
       // 2. coursesテーブルに2コース作る
@@ -93,7 +93,7 @@ public class UserCourseApplicationServiceImplTest {
     }
 
     @Test
-    void コースが0件のとき空リストが返ること() {
+    void コースが0件のとき空リストが返る() {
       jdbcTemplate.execute("DELETE FROM courses");
 
       UUID userId =
@@ -105,7 +105,7 @@ public class UserCourseApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないuserIdを指定した場合ResourceNotFoundExceptionが投げられること() {
+    void 存在しないuserIdを指定した場合ResourceNotFoundExceptionを投げる() {
       assertThrows(
           ResourceNotFoundException.class,
           () -> userCourseApplicationService.findUserCourses(UUID.randomUUID()));

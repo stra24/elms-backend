@@ -23,11 +23,17 @@ participant "UserLoginHistoryRepository" as HistoryRepo
 
 note over Client, HistoryRepo
   JwtFilter / CustomUserDetailsService / SecurityConfig は presentation.security パッケージに配置。
-  JwtFilter は認証必須APIへの全リクエストをインターセプトし、CookieのJWTを検証して
-  SecurityContextに認証情報をセットする（JWTが期限切れでも有効なリフレッシュトークンがあれば再発行する）。
-  CustomUserDetailsService は UserRepository を直接呼ばず、
-  UserApplicationService.findAuthenticatedUserByEmail / findAuthenticatedUserById 経由でユーザーを取得する。
-  ログイン・トークンリフレッシュ・パスワードリセット（/api/password-reset/*）等の公開パスは検証対象外。
+  JwtFilter は shouldNotFilter を持たず、公開パスを含む全リクエストで動作する。
+  permitAll は「未認証でもコントローラへ通す」だけで、Filter 自体はスキップされない。
+
+  JWT の検証元は Cookie ではなく Authorization: Bearer。
+  Cookie 名は JWT（httpOnly=false・寿命1分。フロントがヘッダーへ載せる保管用）と
+  RefreshToken（httpOnly=true。rememberMe=true なら Max-Age 30日、false ならセッションCookie）。
+  JWT / RefreshToken の subject はメールアドレスではなくユーザーID。
+
+  permitAll: /api/auth/login, /api/auth/refresh, /api/password-reset/**,
+  /uploads/**, /actuator/health, swagger。
+  /api/auth/logout は認証必須。権限不足は 403、未認証は 401。
   ※ この前提処理は他のシーケンス図では省略し、本図に集約している。
 end note
 
@@ -36,11 +42,14 @@ end note
 ' ============================================================
 == ログイン (POST /api/auth/login) ==
 
-Client -> AuthController : POST /api/auth/login\n{emailAddress, password}
+Client -> JwtFilter : POST /api/auth/login\n{emailAddress, password, rememberMe}
 
-note over AuthController
-  JwtフィルターはSpring Securityの認証パスとして除外される
+note over JwtFilter
+  permitAll だが Filter は通過する。
+  通常は JWT / RefreshToken が無いため Cookie をクリアしてコントローラへ進む。
 end note
+
+JwtFilter -> AuthController : フィルター通過 → login()
 
 AuthController -> AuthManager : authenticate(\n  UsernamePasswordAuthenticationToken(email, password)\n)
 
@@ -49,46 +58,59 @@ UserDetailsService -> UserAppService : findAuthenticatedUserByEmail(email)
 UserAppService -> UserRepo : findUserByEmailAddress(EmailAddress)
 UserRepo --> UserAppService : User
 UserAppService --> UserDetailsService : AuthenticatedUserDto
-UserDetailsService --> AuthManager : UserDetails
+UserDetailsService --> AuthManager : UserDetails（username=userId）
 
 note over AuthManager
   パスワード照合（BCrypt）
 end note
 
-AuthManager --> AuthController : Authentication（成功）
+alt 認証失敗
+  AuthManager --> AuthController : AuthenticationException
+  AuthController --> Client : 401 Unauthorized
+else 認証成功
+  AuthManager --> AuthController : Authentication
 
-AuthController -> UserAppService : updateUserLoginHistory(LoginHistoryCreateCommand)
-  UserAppService -> UserRepo : findUserByEmailAddress(email)
-  UserRepo --> UserAppService : User
-  UserAppService -> HistoryRepo : findUserLoginHistoryByUserId(userId)
-  HistoryRepo --> UserAppService : Optional<UserLoginHistory>
+  AuthController -> UserAppService : updateUserLoginHistory(LoginHistoryCreateCommand)
+    UserAppService -> UserRepo : findUserByEmailAddress(email)
+    UserRepo --> UserAppService : User
+    UserAppService -> HistoryRepo : findUserLoginHistoryByUserId(userId)
+    HistoryRepo --> UserAppService : Optional<UserLoginHistory>
 
-  alt 初回ログイン（レコードなし）
-    UserAppService -> HistoryRepo : save(UserLoginHistory.create(userId))
-  else 2回目以降（レコードあり）
-    UserAppService -> HistoryRepo : save(history.update())
-  end
+    alt 初回ログイン（レコードなし）
+      UserAppService -> HistoryRepo : save(UserLoginHistory.create(userId))
+    else 2回目以降（レコードあり）
+      UserAppService -> HistoryRepo : save(history.update())
+    end
 
-AuthController -> JwtService : generateJwtToken(authentication.getName())
-JwtService --> AuthController : jwtToken
-AuthController -> JwtService : generateRefreshToken(name, rememberMe)
-JwtService --> AuthController : refreshToken
-AuthController -> JwtService : setJwtTokenToResponseCookie(response, jwtToken)
-AuthController -> JwtService : setRefreshTokenToResponseCookie(response, refreshToken, rememberMe)
+  AuthController -> JwtService : generateJwtToken(authentication.getName())
+  note right: getName() は userId（email ではない）
+  JwtService --> AuthController : jwtToken
+  AuthController -> JwtService : generateRefreshToken(userId, rememberMe)
+  JwtService --> AuthController : refreshToken
+  AuthController -> JwtService : setJwtTokenToResponseCookie(response, jwtToken)
+  AuthController -> JwtService : setRefreshTokenToResponseCookie(response, refreshToken, rememberMe)
 
-AuthController --> Client : 200 OK\nSet-Cookie: jwt=...; refreshToken=...
+  AuthController --> Client : 200 OK\nSet-Cookie: JWT=...; RefreshToken=...
+end
 
 ' ============================================================
 ' ログアウト
 ' ============================================================
 == ログアウト (POST /api/auth/logout) ==
 
-Client -> AuthController : POST /api/auth/logout\n(Cookie: jwt, refreshToken)
+note over Client
+  認証必須。未認証（トークン無し・両方期限切れ等）ならコントローラに届かず 401。
+  JWT 期限切れでも有効な RefreshToken があれば、Filter が再発行してから
+  コントローラが Cookie を削除する。
+end note
 
+Client -> JwtFilter : POST /api/auth/logout\nAuthorization: Bearer <JWT>\nCookie: RefreshToken=...
+
+JwtFilter -> AuthController : フィルター通過（認証済み）→ logout()
 AuthController -> JwtService : clearJwtAndRefreshToken(response)
-note right: Cookieの有効期限を0にして削除
+note right: CookieのMax-Ageを0にして削除
 
-AuthController --> Client : 200 OK\nSet-Cookie: jwt=（削除）; refreshToken=（削除）
+AuthController --> Client : 200 OK\nSet-Cookie: JWT=（削除）; RefreshToken=（削除）
 
 ' ============================================================
 ' トークンリフレッシュ
@@ -96,39 +118,60 @@ AuthController --> Client : 200 OK\nSet-Cookie: jwt=（削除）; refreshToken=�
 == トークンリフレッシュ (GET /api/auth/refresh) ==
 
 note over Client
-  JWTの有効期限切れ時に呼び出す。
-  リフレッシュトークンが有効であれば新しいJWT・リフレッシュトークンを取得できる。
+  JWT の有効期限切れ時に呼び出す（permitAll）。
+  実際の再発行は AuthController ではなく JwtFilter が行う。
+  コントローラは SecurityContext が空なら 401、認証済みなら 200 を返すだけ。
+  JWT がまだ有効な場合は再発行せず、既存 JWT のまま 200 になる。
 end note
 
-Client -> JwtFilter : GET /api/auth/refresh\n(Cookie: jwt=期限切れ, refreshToken=有効)
+Client -> JwtFilter : GET /api/auth/refresh\nAuthorization: Bearer <期限切れJWT>\nCookie: RefreshToken=<有効>
 
 JwtFilter -> JwtService : getJwtFromRequestHeader(request)
-JwtService --> JwtFilter : jwt（期限切れ）
-JwtFilter -> JwtService : isTokenExpired(jwt) → true
+JwtService --> JwtFilter : jwt
+JwtFilter -> JwtService : isTokenFormatValid(jwt) → true
+note right: 期限切れ JWT もフォーマット自体は正常とみなす
 
-JwtFilter -> JwtService : getRefreshTokenFromCookie(request)
-JwtService --> JwtFilter : refreshToken
-JwtFilter -> JwtService : isTokenFormatValid(refreshToken) → true
-JwtFilter -> JwtService : isTokenExpired(refreshToken) → false
-
-JwtFilter -> JwtService : extractSubjectFromToken(refreshToken)
-JwtService --> JwtFilter : userId
+JwtFilter -> JwtService : extractSubjectFromToken(jwt)
+JwtService --> JwtFilter : userId（JWT の subject）
 JwtFilter -> UserDetailsService : loadUserById(userId)
 UserDetailsService -> UserAppService : findAuthenticatedUserById(userId)
 UserAppService -> UserRepo : findUserById(userId)
 UserRepo --> UserAppService : User
 UserAppService --> UserDetailsService : AuthenticatedUserDto
 UserDetailsService --> JwtFilter : UserDetails
+
+JwtFilter -> JwtService : isTokenExpired(jwt) → true
+
+JwtFilter -> JwtService : getRefreshTokenFromCookie(request)
+JwtService --> JwtFilter : refreshToken
+JwtFilter -> JwtService : isTokenFormatValid(refreshToken) → true
+JwtFilter -> JwtService : isTokenExpired(refreshToken) → false
 JwtFilter -> JwtService : getRememberMeFromToken(refreshToken)
 JwtService --> JwtFilter : rememberMe
 
 JwtFilter -> JwtService : generateJwtToken(userId) → newJwt
 JwtFilter -> JwtService : generateRefreshToken(userId, rememberMe) → newRefreshToken
+note right
+  JWT 由来の userId とロード済み UserDetails を再利用する（DB再検索なし）。
+  JWT が切れるたびに RefreshToken も再発行する（スライディングセッション）。
+end note
 JwtFilter -> JwtService : setJwtTokenToResponseCookie(response, newJwt)
 JwtFilter -> JwtService : setRefreshTokenToResponseCookie(response, newRefreshToken, rememberMe)
 JwtFilter -> JwtService : setTokenToSecurityContext(request, userDetails)
 
 JwtFilter -> AuthController : フィルター通過 → refreshAuth()
-AuthController --> Client : 200 OK\nSet-Cookie: jwt=新JWT; refreshToken=新RefreshToken
+
+alt SecurityContext が空（再発行失敗）
+  AuthController --> Client : 401 Unauthorized
+else 認証済み
+  AuthController --> Client : 200 OK\nSet-Cookie: JWT=新JWT; RefreshToken=新RefreshToken
+end
+
+note over JwtFilter
+  図は「期限切れ JWT + 有効 RefreshToken」の主経路。
+  その他: JWT なし / フォーマット不正なら RefreshToken から userId を取り出して再発行。
+  RefreshToken 欠落・不正・期限切れ、またはユーザー不存在なら Cookie を削除し、
+  認証必須 API では後段で 401。
+end note
 
 @enduml

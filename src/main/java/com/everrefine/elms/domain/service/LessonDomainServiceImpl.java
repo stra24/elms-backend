@@ -14,6 +14,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class LessonDomainServiceImpl implements LessonDomainService {
 
+  /** 並び順の小数部の桁数。DBの桁数（numeric(10,4)）に合わせる。 */
+  private static final int ORDER_SCALE = 4;
+
   private final LessonRepository lessonRepository;
 
   @Override
@@ -31,13 +34,25 @@ public class LessonDomainServiceImpl implements LessonDomainService {
     }
 
     if (precedingOrder == null) {
-      return followingOrder.divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP);
+      return followingOrder.divide(BigDecimal.valueOf(2), ORDER_SCALE, RoundingMode.HALF_UP);
     }
 
     if (followingOrder == null) {
       return precedingOrder.add(Order.INTERVAL_ORDER);
     }
 
-    return precedingOrder.add(followingOrder).divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP);
+    return precedingOrder
+        .add(followingOrder)
+        .divide(BigDecimal.valueOf(2), ORDER_SCALE, RoundingMode.HALF_UP);
+  }
+
+  @Override
+  public boolean hasRoomForNewOrder(
+      BigDecimal newOrder, BigDecimal precedingOrder, BigDecimal followingOrder) {
+    if (precedingOrder != null && newOrder.compareTo(precedingOrder) <= 0) {
+      return false;
+    }
+
+    return followingOrder == null || newOrder.compareTo(followingOrder) < 0;
   }
 }

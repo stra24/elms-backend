@@ -2,6 +2,7 @@ package com.everrefine.elms.application.service;
 
 import com.everrefine.elms.application.command.PasswordResetConfirmCommand;
 import com.everrefine.elms.application.command.PasswordResetRequestCommand;
+import com.everrefine.elms.domain.exception.InvalidValueException;
 import com.everrefine.elms.domain.model.passwordreset.PasswordResetToken;
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.User;
@@ -36,7 +37,10 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
     Optional<User> userOpt;
     try {
       userOpt = userRepository.findUserByEmailAddress(new EmailAddress(command.emailAddress()));
-    } catch (IllegalArgumentException e) {
+    } catch (InvalidValueException e) {
+      // アカウントの存在を秘匿するため、メールアドレスの形式が不正でもエラーにはしない。
+      // EmailAddress が投げるのは InvalidValueException であり IllegalArgumentException ではないため、
+      // 捕捉する型を誤ると 500 になってしまう。
       return;
     }
 

@@ -18,7 +18,7 @@ class LessonGroupTest {
   @Nested
   class レッスングループ作成 {
     @Test
-    void createで新しいレッスングループが作成されること() {
+    void createで新しいレッスングループが作成される() {
       // Arrange & Act
       UUID courseId = UUID.randomUUID();
       LessonGroup lessonGroup = LessonGroup.create(courseId, new BigDecimal("1"), "テストグループ");
@@ -36,7 +36,7 @@ class LessonGroupTest {
   @Nested
   class レッスングループ更新 {
     @Test
-    void updateで新しいインスタンスが作成され不変性が保たれること() {
+    void updateで新しいインスタンスが作成され不変性が保たれる() {
       // Arrange
       LocalDateTime originalCreatedAt = LocalDateTime.of(2025, 12, 10, 10, 0);
       LocalDateTime originalUpdatedAt = LocalDateTime.of(2025, 12, 10, 10, 0);
@@ -81,7 +81,7 @@ class LessonGroupTest {
     }
 
     @Test
-    void updateで同じタイトルを設定しても新しいインスタンスが作成されること() {
+    void updateで同じタイトルを設定しても新しいインスタンスが作成される() {
       // Arrange
       LocalDateTime originalCreatedAt = LocalDateTime.of(2025, 12, 10, 10, 0);
       LocalDateTime originalUpdatedAt = LocalDateTime.of(2025, 12, 10, 10, 0);
@@ -105,7 +105,7 @@ class LessonGroupTest {
     }
 
     @Test
-    void updateで空文字を設定できること() {
+    void updateで空文字を設定できる() {
       // Arrange
       LessonGroup original =
           new LessonGroup(
@@ -124,7 +124,7 @@ class LessonGroupTest {
     }
 
     @Test
-    void updateでnullを設定するとInvalidValueExceptionが投げられること() {
+    void updateでnullを設定するとInvalidValueExceptionを投げる() {
       // Arrange
       LessonGroup original =
           new LessonGroup(

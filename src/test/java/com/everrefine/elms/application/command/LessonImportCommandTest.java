@@ -21,7 +21,7 @@ class LessonImportCommandTest {
   @Nested
   class CSV読み込み {
     @Test
-    void BOM付きCSVとクォート付きカンマを読み込めること() {
+    void BOM付きCSVとクォート付きカンマを読み込める() {
       String csv =
           "\uFEFF"
               + String.join(
@@ -53,7 +53,7 @@ class LessonImportCommandTest {
   @Nested
   class CSVバリデーション {
     @Test
-    void CSVファイル形式が不正な場合BadRequestExceptionが投げられること() {
+    void CSVファイル形式が不正な場合BadRequestExceptionを投げる() {
       BadRequestException exception =
           assertThrows(
               BadRequestException.class,
@@ -65,7 +65,7 @@ class LessonImportCommandTest {
     }
 
     @Test
-    void ヘッダのみの場合BadRequestExceptionが投げられること() {
+    void ヘッダのみの場合BadRequestExceptionを投げる() {
       BadRequestException exception =
           assertThrows(
               BadRequestException.class,
@@ -77,7 +77,7 @@ class LessonImportCommandTest {
     }
 
     @Test
-    void ヘッダが不正な場合BadRequestExceptionが投げられること() {
+    void ヘッダが不正な場合BadRequestExceptionを投げる() {
       String csv = String.join("\n", "不正ヘッダ,レッスンタイトル,レッスン説明,レッスンの動画URL", "Basic,L1,,");
 
       BadRequestException exception =
@@ -91,7 +91,7 @@ class LessonImportCommandTest {
     }
 
     @Test
-    void クォートが閉じていない場合BadRequestExceptionが投げられること() {
+    void クォートが閉じていない場合BadRequestExceptionを投げる() {
       String csv = String.join("\n", HEADER, "Basic,\"Lesson 1,,");
 
       BadRequestException exception =
@@ -105,7 +105,7 @@ class LessonImportCommandTest {
     }
 
     @Test
-    void 列数が不正な場合BadRequestExceptionが投げられること() {
+    void 列数が不正な場合BadRequestExceptionを投げる() {
       String csv = String.join("\n", HEADER, "Basic,L1");
 
       BadRequestException exception =
@@ -119,7 +119,7 @@ class LessonImportCommandTest {
     }
 
     @Test
-    void 必須項目が未入力の場合BadRequestExceptionが投げられること() {
+    void 必須項目が未入力の場合BadRequestExceptionを投げる() {
       String csv = String.join("\n", HEADER, ",L1,,");
 
       BadRequestException exception =

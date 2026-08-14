@@ -23,7 +23,10 @@ database "DB" as DB
 
 note over Client
   全ユーザーAPIはJWT認証済みが前提（認証・JWT検証の詳細は「認証」シーケンス図を参照）。
+  一覧・作成・削除・CSV入出力は管理者（ADMIN）のみ。詳細取得・更新は管理者または本人。
+  パスワード変更は認証済みなら本人が実行できる。権限不足は 403。
   進捗率 = 完了レッスン数 ÷ 全レッスン数 を ProgressRate.of() で算出する。
+  UserDto.userRole は表示名（"一般" / "管理者"）。作成APIの userRole は列挙名（"GENERAL" / "ADMIN"）。
 end note
 
 ' ============================================================
@@ -31,7 +34,7 @@ end note
 ' ============================================================
 == ユーザー一覧取得 (GET /api/users) ==
 
-Client -> Controller : GET /api/users\n?pageNum=1&pageSize=10&...（検索条件）
+Client -> Controller : GET /api/users\n?pageNum=1&pageSize=10\n&userId=&userRole=&realName=&userName=&emailAddress=&createdDateFrom=&createdDateTo=
 
 Controller -> AppService : findUsers(UserSearchCommand)
 
@@ -45,24 +48,31 @@ UserRepo -> DB : SELECT WHERE id IN (...)
 DB --> UserRepo : List<User>
 UserRepo --> AppService : List<User>
 
-AppService -> HistoryRepo : findByUserIdsAsMap(userIds)
-HistoryRepo --> AppService : Map<userId, UserLoginHistory>
-AppService -> ULRepo : countByUserIds(userIds)
-ULRepo --> AppService : Map<userId, 完了レッスン数>
-AppService -> LRepo : countAllLessons()
-LRepo --> AppService : 全レッスン数
+alt 該当ユーザーが0件
+  AppService -> UserRepo : countUsers(condition)
+  UserRepo --> AppService : totalSize
+  AppService --> Controller : UserPageDto（空リスト）
+  Controller --> Client : 200 OK { userDtos: [], totalSize, pageNum, pageSize }
+else ユーザーが存在する
+  AppService -> HistoryRepo : findByUserIdsAsMap(userIds)
+  HistoryRepo --> AppService : Map<userId, UserLoginHistory>
+  AppService -> ULRepo : countByUserIds(userIds)
+  ULRepo --> AppService : Map<userId, 完了レッスン数>
+  AppService -> LRepo : countAllLessons()
+  LRepo --> AppService : 全レッスン数
 
-loop 各ユーザー
-  AppService -> AppService : ProgressRate.of(完了レッスン数, 全レッスン数)
+  loop 各ユーザー
+    AppService -> AppService : ProgressRate.of(完了レッスン数, 全レッスン数)
+  end
+
+  AppService -> UserRepo : countUsers(condition)
+  UserRepo -> DB : SELECT COUNT(*)
+  DB --> UserRepo : totalSize (int)
+  UserRepo --> AppService : int
+
+  AppService --> Controller : UserPageDto
+  Controller --> Client : 200 OK { userDtos[], totalSize, pageNum, pageSize }
 end
-
-AppService -> UserRepo : countUsers(condition)
-UserRepo -> DB : SELECT COUNT(*)
-DB --> UserRepo : totalSize (int)
-UserRepo --> AppService : int
-
-AppService --> Controller : UserPageDto
-Controller --> Client : 200 OK { userDtos[], totalSize, pageNum, pageSize }
 
 ' ============================================================
 ' ユーザー詳細取得
@@ -92,7 +102,7 @@ else ユーザーが存在する
   AppService -> AppService : ProgressRate.of(完了レッスン数, 全レッスン数)
 
   AppService --> Controller : UserDto
-  Controller --> Client : 200 OK { id, emailAddress, realName, userName, userRole,\n progressRate, lastLoginAt, ... }
+  Controller --> Client : 200 OK { id, emailAddress, realName, userName, thumbnailUrl,\n userRole（"一般"/"管理者"）, progressRate, lastLoginAt, ... }
 end
 
 ' ============================================================
@@ -100,7 +110,7 @@ end
 ' ============================================================
 == ユーザー新規作成 (POST /api/users) ==
 
-Client -> Controller : POST /api/users\n{ emailAddress, password, confirmPassword, realName, userName, userRole }
+Client -> Controller : POST /api/users\n{ emailAddress, password, confirmPassword, realName, userName, thumbnailUrl, userRole }
 
 note over Controller
   userRole は文字列（"GENERAL" / "ADMIN"）。
@@ -116,6 +126,14 @@ alt パスワード不一致
   AppService --> Controller : BadRequestException（パスワードの確認が一致しません）
   Controller --> Client : 400 Bad Request
 else パスワード一致
+  AppService -> UserRepo : findUserByEmailAddress / findUserByUserName
+  note right of AppService
+    メールアドレスまたはユーザー名が他ユーザーに使用済みなら
+    BadRequestException → 400
+    （「このメールアドレスはすでに使用されています」/
+     「このユーザー名はすでに使用されています」）
+  end note
+
   AppService -> UserRepo : createUser(command.toUser())
   UserRepo -> DB : INSERT INTO users
   DB --> UserRepo : ok
@@ -143,6 +161,12 @@ alt ユーザーが存在しない
 else ユーザーが存在する
   UserRepo --> AppService : User
 
+  AppService -> UserRepo : findUserByEmailAddress / findUserByUserName
+  note right of AppService
+    メールアドレスまたはユーザー名が他ユーザーに使用済みなら
+    BadRequestException → 400
+  end note
+
   AppService -> UserRepo : updateUser(command.toUser(user))
   UserRepo -> DB : UPDATE users SET ...
   DB --> UserRepo : ok
@@ -163,7 +187,7 @@ Controller -> AppService : updatePassword(PasswordUpdateCommand)
 AppService -> AppService : findLoginUser()
 note right
   SecurityContextHolder からログイン中ユーザーIDを取得し、
-  UserRepository.findUserById で User を取得する。
+  内部で UserRepository.findUserById を呼ぶ。
   未認証なら ResponseStatusException(401)、
   該当ユーザーなしなら ResourceNotFoundException(404)。
 end note
@@ -215,6 +239,11 @@ Controller --> Client : 204 No Content
 ' CSVエクスポート
 ' ============================================================
 == ユーザー一覧CSVエクスポート (GET /api/users/export) ==
+note over Client
+  管理者のみ（ADMIN）。ヘッダーは
+  ユーザーID,権限,氏名,メールアドレス,ユーザー名,作成日時,最終ログイン日時,進捗率。
+  権限列は表示名（一般 / 管理者）。このCSVをそのまま import には使えない。
+end note
 
 Client -> Controller : GET /api/users/export
 
@@ -225,15 +254,19 @@ UserRepo -> DB : SELECT * FROM users ORDER BY created_at ASC, id ASC
 DB --> UserRepo : List<User>
 UserRepo --> AppService : List<User>
 
-AppService -> HistoryRepo : findByUserIdsAsMap(userIds)
-HistoryRepo --> AppService : Map<userId, UserLoginHistory>
-AppService -> ULRepo : countByUserIds(userIds)
-ULRepo --> AppService : Map<userId, 完了レッスン数>
-AppService -> LRepo : countAllLessons()
-LRepo --> AppService : 全レッスン数
+alt ユーザーが0件
+  AppService -> AppService : ヘッダー行のみ（BOM付き）を返す
+else ユーザーが存在する
+  AppService -> HistoryRepo : findByUserIdsAsMap(userIds)
+  HistoryRepo --> AppService : Map<userId, UserLoginHistory>
+  AppService -> ULRepo : countByUserIds(userIds)
+  ULRepo --> AppService : Map<userId, 完了レッスン数>
+  AppService -> LRepo : countAllLessons()
+  LRepo --> AppService : 全レッスン数
 
-loop 各ユーザー
-  AppService -> AppService : ProgressRate.of(完了レッスン数, 全レッスン数)
+  loop 各ユーザー
+    AppService -> AppService : ProgressRate.of(完了レッスン数, 全レッスン数)
+  end
 end
 
 AppService -> AppService : CSVバイト列生成\n（BOM付きUTF-8・カンマ・ダブルクォートエスケープ）
@@ -247,9 +280,16 @@ Controller --> Client : 200 OK\nContent-Type: text/csv\nContent-Disposition: att
 == ユーザーCSV一括取込 (POST /api/users/import) ==
 note over Client
   管理者のみ（ADMIN）。CSVの内容でユーザーを洗い替える（DELETE → INSERT）。
+  取込ヘッダーは 権限,氏名,メールアドレス,ユーザー名（4列）。権限は「一般」「管理者」。
 end note
 
-Client -> Controller : POST /api/users/import\nmultipart/form-data（file=users.csv）
+Client -> Controller : POST /api/users/import\nmultipart/form-data（file=*.csv）
+
+Controller -> Controller : UserImportCommand.from(file, currentUserId)
+note right of Controller
+  ファイル未指定・拡張子不正・空・ヘッダー不一致・列不正・
+  必須空・権限不正・メール/ユーザー名重複はここで 400。
+end note
 
 Controller -> AppService : importUsersCsv(UserImportCommand)
 
@@ -263,13 +303,18 @@ alt 現在ログイン中ユーザーが存在しない
 else 存在する
   UserRepo --> AppService : currentUser
 
-  AppService -> AppService : CSV内に現在ログイン中ユーザーが含まれるか検証
-  AppService -> AppService : CSV内に管理者(ADMIN)が1人以上含まれるか検証
+  AppService -> AppService : CSV内に現在ログイン中ユーザーが含まれるか検証（メール一致）
+  AppService -> AppService : CSV内に管理者（表示名「管理者」）が1人以上含まれるか検証
   note right of AppService
     いずれかを満たさない場合は 400 Bad Request（DBは更新しない）
   end note
 
-  AppService -> AppService : CSV行からUserを生成\n（現在ログイン中ユーザーのIDは維持）
+  AppService -> AppService : CSV行からUserを生成
+  note right of AppService
+    現在ログイン中ユーザーのみメール一致でIDを維持。それ以外は新規UUID。
+    全ユーザーのパスワードは32文字の乱数で再発行。thumbnailUrl は null。
+    DELETE は CASCADE でログイン履歴・受講進捗・リセットトークンも消える。
+  end note
 
   AppService -> UserRepo : deleteAllUsers()
   UserRepo -> DB : DELETE FROM users

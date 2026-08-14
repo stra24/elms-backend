@@ -52,7 +52,7 @@ public class UserLessonApplicationServiceImplTest {
   @Nested
   class レッスン詳細取得 {
     @Test
-    void 未完了の場合isLessonCompletedがfalseになること() {
+    void 未完了の場合isLessonCompletedがfalseになる() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "ULテストコース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "ULテストグループ");
       UUID lessonId =
@@ -75,7 +75,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void 受講完了済みの場合isLessonCompletedがtrueになること() {
+    void 受講完了済みの場合isLessonCompletedがtrueになる() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "UL完了コース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "UL完了グループ");
       UUID lessonId =
@@ -99,7 +99,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void パスのコースまたはグループがレッスンと一致しない場合ResourceNotFoundExceptionが投げられること() {
+    void パスのコースまたはグループがレッスンと一致しない場合ResourceNotFoundExceptionを投げる() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "UL整合コース", "説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "UL整合グループ");
       UUID lessonId =
@@ -118,7 +118,7 @@ public class UserLessonApplicationServiceImplTest {
   @Nested
   class 受講状態更新 {
     @Test
-    void isLessonCompletedがtrueでレコードが存在するときuserLessonが更新されること() {
+    void isLessonCompletedがtrueでレコードが存在するときuserLessonが更新される() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "UL更新コース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "UL更新グループ");
       UUID lessonId =
@@ -161,7 +161,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void isLessonCompletedがtrueでレコードが存在しないときuserLessonが新規作成されること() {
+    void isLessonCompletedがtrueでレコードが存在しないときuserLessonが新規作成される() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "UL新規コース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "UL新規グループ");
       UUID lessonId =
@@ -186,7 +186,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void isLessonCompletedがfalseのときuserLessonが削除されること() {
+    void isLessonCompletedがfalseのときuserLessonが削除される() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "UL削除コース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "UL削除グループ");
       UUID lessonId =
@@ -210,7 +210,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないuserIdを指定するとResourceNotFoundExceptionが投げられること() {
+    void 存在しないuserIdを指定するとResourceNotFoundExceptionを投げる() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "ULユーザ無コース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "ULユーザ無グループ");
       UUID lessonId =
@@ -232,7 +232,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void 存在しないlessonIdを指定するとResourceNotFoundExceptionが投げられること() {
+    void 存在しないlessonIdを指定するとResourceNotFoundExceptionを投げる() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "ULレッスン無コース", "コース説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "ULレッスン無グループ");
       UUID userId = testData.createUser("ul-no-lesson@example.com", "p", "テスト", "uln", "GENERAL");
@@ -247,7 +247,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void パスのコースがレッスンと一致しない場合ResourceNotFoundExceptionが投げられること() {
+    void パスのコースがレッスンと一致しない場合ResourceNotFoundExceptionを投げる() {
       UUID courseId = testData.createCourse(new BigDecimal("1"), "ULPUT整合コース", "説明");
       UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "ULPUT整合グループ");
       UUID lessonId =
@@ -269,7 +269,7 @@ public class UserLessonApplicationServiceImplTest {
   @Nested
   class レッスン一覧取得 {
     @Test
-    void 該当ユーザーに紐づく該当コースのレッスン一覧を取得できること() {
+    void 該当ユーザーに紐づく該当コースのレッスン一覧を取得できる() {
       // Arrange
       UUID courseId1 = testData.createCourse(new BigDecimal("1"), "はじめ", "コース１");
       UUID courseId2 = testData.createCourse(new BigDecimal("2"), "つぎに", "コース２");
@@ -345,7 +345,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void レッスンが空のレッスングループでも一覧取得できること() {
+    void レッスンが空のレッスングループでも一覧取得できる() {
       // Arrange
       UUID courseId = testData.createCourse(new BigDecimal("1"), "空グループコース", "説明");
       UUID emptyLessonGroupId =
@@ -377,7 +377,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void ユーザーが存在しないときResourceNotFoundExceptionが投げられること() {
+    void ユーザーが存在しないときResourceNotFoundExceptionを投げる() {
       // Arrange
       UUID courseId = testData.createCourse(new BigDecimal("1"), "はじめ", "コース１");
       // Act & Assert
@@ -387,7 +387,7 @@ public class UserLessonApplicationServiceImplTest {
     }
 
     @Test
-    void コースが存在しないときResourceNotFoundExceptionが投げられること() {
+    void コースが存在しないときResourceNotFoundExceptionを投げる() {
       // Arrange
       UUID userId =
           testData.createUser("ul-upd@example.com", "password", "テスト 太郎", "ulupd", "GENERAL");

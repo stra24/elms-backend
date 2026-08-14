@@ -7,6 +7,7 @@ import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
 import com.everrefine.elms.application.command.LessonSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.*;
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.Lesson;
@@ -224,7 +225,15 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
 
     BigDecimal followingOrder = resolveLessonOrderOrNull(followingLessonId, lessonIdAndLessonMap);
 
+    if (precedingOrder == null && followingOrder == null) {
+      throw new BadRequestException("移動先の前後いずれかのレッスンを指定してください");
+    }
+
     BigDecimal newOrder = lessonDomainService.calculateNewOrder(precedingOrder, followingOrder);
+
+    if (!lessonDomainService.hasRoomForNewOrder(newOrder, precedingOrder, followingOrder)) {
+      throw new BadRequestException("この位置にはこれ以上移動できません。前後のレッスンの並び順を空けてから再度実行してください");
+    }
 
     Lesson updatedLesson = targetLesson.updateOrder(newOrder);
     Lesson savedLesson = lessonRepository.updateLesson(updatedLesson);

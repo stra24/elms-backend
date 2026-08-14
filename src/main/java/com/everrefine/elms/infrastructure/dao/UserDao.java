@@ -25,6 +25,14 @@ public interface UserDao extends CrudRepository<UserEntity, UUID> {
 
   @Query(
       """
+      SELECT *
+      FROM users
+      WHERE user_name = :userName
+      """)
+  Optional<UserEntity> findByUserName(@Param("userName") String userName);
+
+  @Query(
+      """
           SELECT *
           FROM users
           WHERE email_address = :emailAddress
