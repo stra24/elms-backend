@@ -6,6 +6,7 @@ import com.everrefine.elms.application.command.UserCreateCommand;
 import com.everrefine.elms.application.command.UserImportCommand;
 import com.everrefine.elms.application.command.UserSearchCommand;
 import com.everrefine.elms.application.command.UserUpdateCommand;
+import com.everrefine.elms.application.dto.AuthenticatedUserDto;
 import com.everrefine.elms.application.dto.UserDto;
 import com.everrefine.elms.application.dto.UserImportResponseDto;
 import com.everrefine.elms.application.dto.UserPageDto;
@@ -22,6 +23,22 @@ public interface UserApplicationService {
    * @return ユーザーDTO
    */
   UserDto findUserById(UUID userId);
+
+  /**
+   * 認証用にユーザーをIDで取得する。
+   *
+   * @param userId ユーザーID
+   * @return 認証用ユーザーDTO
+   */
+  AuthenticatedUserDto findAuthenticatedUserById(UUID userId);
+
+  /**
+   * 認証用にユーザーをメールアドレスで取得する。
+   *
+   * @param emailAddress メールアドレス
+   * @return 認証用ユーザーDTO
+   */
+  AuthenticatedUserDto findAuthenticatedUserByEmail(String emailAddress);
 
   /**
    * ユーザー一覧をページング取得する。

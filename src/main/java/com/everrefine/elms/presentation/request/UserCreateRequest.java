@@ -1,10 +1,8 @@
 package com.everrefine.elms.presentation.request;
 
 import com.everrefine.elms.application.command.UserCreateCommand;
-import com.everrefine.elms.domain.model.user.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /** ユーザー作成リクエスト。 */
@@ -22,7 +20,8 @@ public record UserCreateRequest(
         String confirmPassword,
     @Schema(description = "サムネイルURL", example = "https://example.com/thumbnail.png")
         String thumbnailUrl,
-    @Schema(description = "ユーザーロール（GENERAL: 一般, ADMIN: 管理者）", example = "GENERAL") @NotNull UserRole userRole) {
+    @Schema(description = "ユーザーロール（GENERAL: 一般, ADMIN: 管理者）", example = "GENERAL") @NotBlank
+        String userRole) {
 
   /**
    * Commandオブジェクトに変換する。

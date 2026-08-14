@@ -1,8 +1,8 @@
-package com.everrefine.elms.infrastructure.security;
+package com.everrefine.elms.presentation.security;
 
-import com.everrefine.elms.domain.model.user.EmailAddress;
-import com.everrefine.elms.domain.model.user.User;
-import com.everrefine.elms.domain.repository.UserRepository;
+import com.everrefine.elms.application.dto.AuthenticatedUserDto;
+import com.everrefine.elms.application.exception.ResourceNotFoundException;
+import com.everrefine.elms.application.service.UserApplicationService;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -15,28 +15,24 @@ import org.springframework.stereotype.Service;
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
-  private final UserRepository userRepository;
+  private final UserApplicationService userApplicationService;
 
   /**
    * CustomUserDetailsServiceのコンストラクタ。
    *
-   * @param repo ユーザーリポジトリ
+   * @param userApplicationService ユーザーアプリケーションサービス
    */
-  public CustomUserDetailsService(UserRepository repo) {
-    this.userRepository = repo;
+  public CustomUserDetailsService(UserApplicationService userApplicationService) {
+    this.userApplicationService = userApplicationService;
   }
 
   @Override
   public UserDetails loadUserByUsername(String emailAddress) {
-    User user =
-        userRepository
-            .findUserByEmailAddress(new EmailAddress(emailAddress))
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-    return new org.springframework.security.core.userdetails.User(
-        user.id().toString(),
-        user.password().value(),
-        List.of(new SimpleGrantedAuthority(user.userRole().getCode())));
+    try {
+      return toUserDetails(userApplicationService.findAuthenticatedUserByEmail(emailAddress));
+    } catch (ResourceNotFoundException e) {
+      throw new UsernameNotFoundException("User not found");
+    }
   }
 
   /**
@@ -48,15 +44,10 @@ public class CustomUserDetailsService implements UserDetailsService {
    */
   public UserDetails loadUserById(String userId) {
     try {
-      User user =
-          userRepository
-              .findUserById(UUID.fromString(userId))
-              .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-      return new org.springframework.security.core.userdetails.User(
-          user.id().toString(),
-          user.password().value(),
-          List.of(new SimpleGrantedAuthority(user.userRole().getCode())));
+      return toUserDetails(
+          userApplicationService.findAuthenticatedUserById(UUID.fromString(userId)));
+    } catch (ResourceNotFoundException e) {
+      throw new UsernameNotFoundException("User not found");
     } catch (UsernameNotFoundException e) {
       throw e;
     } catch (Exception e) {
@@ -64,5 +55,12 @@ public class CustomUserDetailsService implements UserDetailsService {
       // JwtFilterのtry-catchで適切に処理させる
       throw new UsernameNotFoundException("Failed to load user: " + userId, e);
     }
+  }
+
+  private UserDetails toUserDetails(AuthenticatedUserDto user) {
+    return new org.springframework.security.core.userdetails.User(
+        user.id().toString(),
+        user.encodedPassword(),
+        List.of(new SimpleGrantedAuthority(user.roleCode())));
   }
 }

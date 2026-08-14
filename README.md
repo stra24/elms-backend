@@ -174,45 +174,14 @@ flowchart TB
 | infrastructure | domain |
 | domain | なし（他レイヤーに依存しない） |
 
+> **例外:** `GlobalExceptionHandler` は全レイヤーの例外を捕捉するため、domain 層の例外クラスへの依存を許可する。
+
 **禁止される依存の例**
 
 - presentation → infrastructure（コントローラーから Dao を直接呼ばない）
 - application → infrastructure（ユースケースから Dao を直接呼ばない）
 - domain → application / infrastructure / presentation
 
-### アーキテクチャルール一覧
-
-本プロジェクトでは、以下のルールに従った設計・実装を行います。
-
-#### レイヤー依存ルール（Rule 1〜7）
-
-| Rule | 内容 |
-|---|---|
-| 1 | presentation 層は infrastructure 層にアクセスしてはならない |
-| 2 | application 層は infrastructure 層にアクセスしてはならない |
-| 3 | application 層は presentation 層にアクセスしてはならない |
-| 4 | domain 層は application 層にアクセスしてはならない |
-| 5 | domain 層は infrastructure 層にアクセスしてはならない |
-| 6 | domain 層は presentation 層にアクセスしてはならない |
-| 7 | infrastructure 層は presentation 層にアクセスしてはならない |
-
-#### 命名・構成ルール（Rule 8〜20）
-
-| Rule | 内容 |
-|---|---|
-| 8 | `presentation.request` パッケージのクラスは `Request` で終わること |
-| 9 | `@RestController` 付きクラスは `Controller` で終わること |
-| 10 | `application.service` の **インターフェース** は `ApplicationService` で終わること |
-| 11 | `application.service` の `@Service` クラスは `ApplicationServiceImpl` で終わること |
-| 12 | `application.command` パッケージのクラスは `Command` で終わること |
-| 13 | `application.dto` パッケージのクラスは `Dto` で終わること |
-| 14 | `domain.repository` の **インターフェース** は `Repository` で終わること |
-| 15 | `infrastructure.repository` の `@Repository` クラスは `RepositoryImpl` で終わること |
-| 16 | `@RestController` 付きクラスは `@RequestMapping` を持つこと |
-| 17 | `@RestController` 付きクラスは Swagger の `@Tag` を持つこと |
-| 18 | `infrastructure.repository` のクラス（インターフェース以外）は `@Repository` を持つこと |
-| 19 | `domain.service` の **インターフェース** は `DomainService` で終わること |
-| 20 | `domain.service` のクラス（インターフェース以外）は `DomainServiceImpl` で終わること |
 
 ### ドメイン駆動設計（DDD）の指針
 
@@ -386,7 +355,6 @@ flowchart TB
 | `entity` | DB 行マッピング用の永続化モデル | `～Entity` |
 | `row` | 複数テーブル結合など、Dao の投影結果用の行クラス | `～Row` |
 | `repository` | リポジトリの実装クラス | `ドメインの名前 + RepositoryImpl` |
-| `security` | 認証・認可に関するクラス | — |
 
 #### presentation
 
@@ -397,6 +365,7 @@ flowchart TB
 | `response` | API のレスポンスのオブジェクト | `～Response` |
 | `exception` | グローバル例外ハンドラー | — |
 | `scheduler` | 定期実行ジョブ | — |
+| `security` | JWT フィルター・Spring Security 設定・認証アダプター | — |
 
 `response` について：アプリケーションサービスのメソッドの戻り値（DTO）と内容が変わらなければ、DTO をそのまま API のレスポンスとして返してよい。
 
@@ -448,7 +417,8 @@ src/main/java/com/everrefine/elms/
 │   ├── request/           # リクエストクラス
 │   ├── response/          # レスポンスクラス（ErrorResponse 等）
 │   ├── exception/         # グローバル例外ハンドラー
-│   └── scheduler/         # 定期実行ジョブ
+│   ├── scheduler/         # 定期実行ジョブ
+│   └── security/          # JWT フィルター・Spring Security 設定
 ├── application/
 │   ├── command/           # ユースケース入力
 │   ├── dto/               # ユースケース出力
@@ -465,7 +435,6 @@ src/main/java/com/everrefine/elms/
     ├── entity/            # 永続化エンティティ
     ├── row/               # 結合クエリ等の行クラス
     ├── repository/        # リポジトリ実装
-    └── security/          # JWT フィルター・Spring Security 設定
 src/main/resources/
 ├── application.yml        # 共通設定
 ├── application-dev.yml    # 開発環境設定（ローカルファイルストレージ）

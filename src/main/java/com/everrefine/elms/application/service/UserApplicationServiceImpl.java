@@ -6,6 +6,7 @@ import com.everrefine.elms.application.command.UserCreateCommand;
 import com.everrefine.elms.application.command.UserImportCommand;
 import com.everrefine.elms.application.command.UserSearchCommand;
 import com.everrefine.elms.application.command.UserUpdateCommand;
+import com.everrefine.elms.application.dto.AuthenticatedUserDto;
 import com.everrefine.elms.application.dto.UserDto;
 import com.everrefine.elms.application.dto.UserImportResponseDto;
 import com.everrefine.elms.application.dto.UserPageDto;
@@ -34,6 +35,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,6 +92,26 @@ public class UserApplicationServiceImpl implements UserApplicationService {
 
   @Override
   @Transactional(readOnly = true)
+  public AuthenticatedUserDto findAuthenticatedUserById(UUID userId) {
+    User user =
+        userRepository
+            .findUserById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException(User.class, String.valueOf(userId)));
+    return AuthenticatedUserDto.from(user);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public AuthenticatedUserDto findAuthenticatedUserByEmail(String emailAddress) {
+    User user =
+        userRepository
+            .findUserByEmailAddress(new EmailAddress(emailAddress))
+            .orElseThrow(() -> new ResourceNotFoundException(User.class, emailAddress));
+    return AuthenticatedUserDto.from(user);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
   public UserPageDto findUsers(UserSearchCommand userSearchCommand) {
     var userSearchCondition = userSearchCommand.toSearchCondition();
     List<UUID> userIds = userRepository.findUserIdsBySearchConditions(userSearchCondition);
@@ -130,7 +154,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   @Override
   @Transactional
   public void createUser(UserCreateCommand userCreateCommand) {
-    if (!UserDomainService.matchesPassword(
+    if (!userDomainService.matchesPassword(
         userCreateCommand.password(), userCreateCommand.confirmPassword())) {
       throw new BadRequestException("パスワードの確認が一致しません");
     }
@@ -255,7 +279,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   @Transactional
   @Override
   public void updatePassword(PasswordUpdateCommand passwordUpdateCommand) {
-    User user = userDomainService.getLoginUser();
+    User user = findLoginUser();
 
     if (!user.isCurrentPasswordMatch(passwordUpdateCommand.currentPassword())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
@@ -263,6 +287,23 @@ public class UserApplicationServiceImpl implements UserApplicationService {
 
     userRepository.updateUser(
         passwordUpdateCommand.toUser(user, passwordUpdateCommand.newPassword()));
+  }
+
+  /**
+   * 現在ログイン中のユーザーを取得する。
+   *
+   * @return 現在ログイン中のユーザー
+   */
+  private User findLoginUser() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null || !authentication.isAuthenticated()) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+    }
+    UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+    UUID userId = UUID.fromString(userDetails.getUsername());
+    return userRepository
+        .findUserById(userId)
+        .orElseThrow(() -> new ResourceNotFoundException(User.class, String.valueOf(userId)));
   }
 
   /**

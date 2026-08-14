@@ -13,7 +13,7 @@ public record UserCreateCommand(
     String password,
     String confirmPassword,
     String thumbnailUrl,
-    UserRole userRole) {
+    String userRole) {
 
   /**
    * Userエンティティに変換する。
@@ -21,6 +21,7 @@ public record UserCreateCommand(
    * @return ユーザーエンティティ
    */
   public User toUser() {
-    return User.create(emailAddress, password, realName, userName, thumbnailUrl, userRole);
+    return User.create(
+        emailAddress, password, realName, userName, thumbnailUrl, UserRole.valueOf(userRole));
   }
 }

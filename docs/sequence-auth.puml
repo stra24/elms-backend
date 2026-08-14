@@ -22,8 +22,11 @@ participant "UserRepository" as UserRepo
 participant "UserLoginHistoryRepository" as HistoryRepo
 
 note over Client, HistoryRepo
+  JwtFilter / CustomUserDetailsService / SecurityConfig は presentation.security パッケージに配置。
   JwtFilter は認証必須APIへの全リクエストをインターセプトし、CookieのJWTを検証して
   SecurityContextに認証情報をセットする（JWTが期限切れでも有効なリフレッシュトークンがあれば再発行する）。
+  CustomUserDetailsService は UserRepository を直接呼ばず、
+  UserApplicationService.findAuthenticatedUserByEmail / findAuthenticatedUserById 経由でユーザーを取得する。
   ログイン・トークンリフレッシュ・パスワードリセット（/api/password-reset/*）等の公開パスは検証対象外。
   ※ この前提処理は他のシーケンス図では省略し、本図に集約している。
 end note
@@ -42,8 +45,10 @@ end note
 AuthController -> AuthManager : authenticate(\n  UsernamePasswordAuthenticationToken(email, password)\n)
 
 AuthManager -> UserDetailsService : loadUserByUsername(email)
-UserDetailsService -> UserRepo : findUserByEmailAddress(EmailAddress)
-UserRepo --> UserDetailsService : Optional<User>
+UserDetailsService -> UserAppService : findAuthenticatedUserByEmail(email)
+UserAppService -> UserRepo : findUserByEmailAddress(EmailAddress)
+UserRepo --> UserAppService : User
+UserAppService --> UserDetailsService : AuthenticatedUserDto
 UserDetailsService --> AuthManager : UserDetails
 
 note over AuthManager
@@ -109,6 +114,10 @@ JwtFilter -> JwtService : isTokenExpired(refreshToken) → false
 JwtFilter -> JwtService : extractSubjectFromToken(refreshToken)
 JwtService --> JwtFilter : userId
 JwtFilter -> UserDetailsService : loadUserById(userId)
+UserDetailsService -> UserAppService : findAuthenticatedUserById(userId)
+UserAppService -> UserRepo : findUserById(userId)
+UserRepo --> UserAppService : User
+UserAppService --> UserDetailsService : AuthenticatedUserDto
 UserDetailsService --> JwtFilter : UserDetails
 JwtFilter -> JwtService : getRememberMeFromToken(refreshToken)
 JwtService --> JwtFilter : rememberMe

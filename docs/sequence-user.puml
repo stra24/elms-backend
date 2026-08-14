@@ -102,6 +102,11 @@ end
 
 Client -> Controller : POST /api/users\n{ emailAddress, password, confirmPassword, realName, userName, userRole }
 
+note over Controller
+  userRole は文字列（"GENERAL" / "ADMIN"）。
+  UserCreateRequest → UserCreateCommand 変換時に UserRole.valueOf() で列挙型に変換する。
+end note
+
 Controller -> AppService : createUser(UserCreateCommand)
 
 AppService -> DomainService : matchesPassword(password, confirmPassword)
@@ -155,9 +160,17 @@ Client -> Controller : PUT /api/users/password\n{ currentPassword, newPassword }
 
 Controller -> AppService : updatePassword(PasswordUpdateCommand)
 
-AppService -> DomainService : getLoginUser()
-note right: SecurityContextからログイン中ユーザーを取得\n未認証なら401、該当ユーザーなしなら404
-DomainService --> AppService : User
+AppService -> AppService : findLoginUser()
+note right
+  SecurityContextHolder からログイン中ユーザーIDを取得し、
+  UserRepository.findUserById で User を取得する。
+  未認証なら ResponseStatusException(401)、
+  該当ユーザーなしなら ResourceNotFoundException(404)。
+end note
+AppService -> UserRepo : findUserById(userId)
+UserRepo -> DB : SELECT WHERE id = ?
+DB --> UserRepo : Optional<User>
+UserRepo --> AppService : User
 
 AppService -> AppService : user.isCurrentPasswordMatch(currentPassword)
 

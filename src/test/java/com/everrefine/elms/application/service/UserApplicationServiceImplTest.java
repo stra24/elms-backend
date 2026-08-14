@@ -12,6 +12,7 @@ import com.everrefine.elms.application.command.UserImportCommand;
 import com.everrefine.elms.application.command.UserSearchCommand;
 import com.everrefine.elms.application.dto.UserImportResponseDto;
 import com.everrefine.elms.application.dto.UserPageDto;
+import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.UserRepository;
 import com.everrefine.elms.presentation.request.PasswordUpdateRequest;
@@ -215,18 +216,16 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void ユーザーが存在しないとき404のResponseStatusExceptionが投げられること() {
+    void ユーザーが存在しないときResourceNotFoundExceptionが投げられること() {
       // Arrange - DBに存在しないユーザーIDで認証済みの状態にする
       createAuthentication(UUID.randomUUID(), "currentPass");
       PasswordUpdateRequest request = new PasswordUpdateRequest("currentPass", "newPass");
       PasswordUpdateCommand passwordUpdateCommand = request.toCommand();
 
       // Act & Assert
-      ResponseStatusException ex =
-          assertThrows(
-              ResponseStatusException.class,
-              () -> userApplicationService.updatePassword(passwordUpdateCommand));
-      assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+      assertThrows(
+          ResourceNotFoundException.class,
+          () -> userApplicationService.updatePassword(passwordUpdateCommand));
     }
 
     @Test
